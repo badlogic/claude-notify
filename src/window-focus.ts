@@ -3,37 +3,29 @@ import { log } from './logger'
 
 export function focusTerminalByTTY(tty: string): boolean {
   try {
-    // Extract the terminal device number from TTY (e.g., "s001" -> "1")
-    const ttyMatch = tty.match(/s(\d+)/)
-    if (!ttyMatch) {
-      log(`Invalid TTY format: ${tty}`)
-      return false
-    }
-
-    const ttyNum = ttyMatch[1]
+    // TTY comes in format like "ttys005", we need to match it exactly
+    log(`Searching for terminal with TTY: ${tty}`)
 
     // AppleScript to find and focus the terminal window with matching TTY
     const appleScript = `
 tell application "Terminal"
-    set targetTTY to "ttys${ttyNum.padStart(3, '0')}"
-    
     -- Check all windows
     repeat with w in windows
         repeat with t in tabs of w
             -- Get the tty of this tab
             set tabTTY to (tty of t)
             
-            if tabTTY contains targetTTY then
+            if tabTTY contains "${tty}" then
                 -- Found the window, bring it to front
                 set frontmost of w to true
                 set selected of t to true
                 activate
-                return "Found and focused window with TTY " & targetTTY
+                return "Found and focused window with TTY ${tty}"
             end if
         end repeat
     end repeat
     
-    return "No window found with TTY " & targetTTY
+    return "No window found with TTY ${tty}"
 end tell
 `
 
@@ -49,35 +41,12 @@ end tell
 
 export function focusTerminalByCWD(cwd: string): boolean {
   try {
-    // AppleScript to find and focus terminal by working directory
-    const appleScript = `
-tell application "Terminal"
-    -- Check all windows
-    repeat with w in windows
-        repeat with t in tabs of w
-            -- Check if this tab's current directory matches
-            do script "pwd" in t
-            delay 0.1
-            set tabPwd to (history of t)
-            
-            if tabPwd contains "${cwd}" then
-                -- Found the window, bring it to front
-                set frontmost of w to true
-                set selected of t to true
-                activate
-                return "Found and focused window with CWD ${cwd}"
-            end if
-        end repeat
-    end repeat
+    log(`Searching for terminal with CWD: ${cwd}`)
     
-    return "No window found with CWD ${cwd}"
-end tell
-`
-
-    const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
-    log('AppleScript result:', result.trim())
-
-    return result.includes('Found and focused')
+    // For now, let's disable CWD-based focusing as it's unreliable
+    // The `do script` command creates new output in terminals which is intrusive
+    log('CWD-based focusing is currently disabled')
+    return false
   } catch (error) {
     log('Error focusing terminal by CWD:', error)
     return false

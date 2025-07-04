@@ -48,12 +48,15 @@ export function getClaudeProcessInfo(): { pid: number; tty: string } | null {
   try {
     // Get the parent process ID (Claude Code)
     const ppid = process.ppid
+    log(`Parent process ID: ${ppid}`)
 
     // Get process info using ps
     const psOutput = execSync(`ps -p ${ppid} -o pid=,tty=`, { encoding: 'utf-8' })
+    log(`PS output for parent: ${psOutput}`)
     const [pid, tty] = psOutput.trim().split(/\s+/)
 
     if (pid && tty && tty !== '??') {
+      log(`Found parent process - PID: ${pid}, TTY: ${tty}`)
       return { pid: Number.parseInt(pid), tty }
     }
 

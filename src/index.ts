@@ -50,8 +50,8 @@ export function sendNotification(options: NotificationOptions): Promise<void> {
         title: options.title,
         message: options.message,
         sound: options.sound || 'Glass',
-        timeout: options.timeout || false, // Disable auto-dismiss
-        wait: options.wait || true, // Keep notification until clicked
+        timeout: options.timeout !== undefined ? options.timeout : false, // Disable auto-dismiss by default
+        wait: options.wait !== undefined ? options.wait : true, // Keep notification until clicked by default
       },
       (err: Error | null) => {
         if (err) reject(err)
@@ -102,22 +102,36 @@ export async function handleStopHook(
       lastMessage.length > 200 ? `${lastMessage.slice(0, 197)}...` : lastMessage
     const displayCwd = cwd ? cwd.replace(process.env.HOME || '', '~') : 'Unknown'
 
-    // Set up click handler before showing notification
-    notifier.on('click', (notifierObject, options, event) => {
-      log('Notification clicked, attempting to focus window')
-      const sessionInfo = getSession(input.session_id)
+    // Create a promise that resolves when notification is interacted with
+    const notificationPromise = new Promise<void>((resolve) => {
+      // Remove any existing listeners to prevent duplicates
+      notifier.removeAllListeners('click')
+      notifier.removeAllListeners('timeout')
+      
+      // Set up click handler
+      notifier.once('click', (notifierObject, options, event) => {
+        log('Notification clicked, attempting to focus window')
+        const sessionInfo = getSession(input.session_id)
 
-      if (sessionInfo) {
-        log(`Found session info: TTY=${sessionInfo.tty}, CWD=${sessionInfo.cwd}`)
-        const focused = focusTerminalWindow(sessionInfo.tty, sessionInfo.cwd)
-        if (focused) {
-          log('Successfully focused terminal window')
+        if (sessionInfo) {
+          log(`Found session info: TTY=${sessionInfo.tty}, CWD=${sessionInfo.cwd}`)
+          const focused = focusTerminalWindow(sessionInfo.tty, sessionInfo.cwd)
+          if (focused) {
+            log('Successfully focused terminal window')
+          } else {
+            log('Failed to focus terminal window')
+          }
         } else {
-          log('Failed to focus terminal window')
+          log('No session info found for focus')
         }
-      } else {
-        log('No session info found for focus')
-      }
+        resolve()
+      })
+      
+      // Also handle timeout
+      notifier.once('timeout', () => {
+        log('Notification timed out')
+        resolve()
+      })
     })
 
     await Promise.all([
@@ -125,6 +139,7 @@ export async function handleStopHook(
         title: 'Claude Code',
         message: `${displayCwd}\n\n${truncatedMessage}`,
         sound: 'Glass', // We'll play our own sound separately
+        wait: true, // This is crucial for click events
       }),
       playSound(options?.soundPath),
     ])
