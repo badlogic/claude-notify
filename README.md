@@ -108,6 +108,14 @@ npm unlink -g @mariozechner/claude-notify
 5. Make changes to the source - they'll be automatically rebuilt
 6. Test again without reinstalling
 
+### Debugging
+
+Logs are written to `~/.claude-notify/log.txt`. Check this file if notifications aren't working as expected:
+
+```bash
+tail -f ~/.claude-notify/log.txt
+```
+
 ## API
 
 ### `handleStopHook(input: HookInput, options?: { soundPath?: string })`

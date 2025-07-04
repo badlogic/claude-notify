@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import notifier from 'node-notifier'
+import { log } from './logger'
 import { playSound } from './sound'
 import type { HookInput, NotificationOptions, TranscriptEntry } from './types'
 
@@ -47,8 +48,8 @@ export function sendNotification(options: NotificationOptions): Promise<void> {
         title: options.title,
         message: options.message,
         sound: options.sound || 'Glass',
-        timeout: options.timeout || 10,
-        wait: options.wait || false,
+        timeout: options.timeout || false, // Disable auto-dismiss
+        wait: options.wait || true, // Keep notification until clicked
       },
       (err: Error | null) => {
         if (err) reject(err)
@@ -62,25 +63,44 @@ export async function handleStopHook(
   input: HookInput,
   options?: { soundPath?: string },
 ): Promise<void> {
-  const entries = parseTranscript(input.transcript_path)
-  const lastMessage = getLastAssistantMessage(entries)
-  const cwd = getCurrentWorkingDirectory(entries)
+  try {
+    log('=== Claude Notify Hook Triggered ===')
+    log('Input:', input)
+    
+    const entries = parseTranscript(input.transcript_path)
+    
+    log(`Parsed ${entries.length} entries from transcript`)
+    log('Last 3 entry types:', entries.slice(-3).map(e => e.type))
+    
+    const lastMessage = getLastAssistantMessage(entries)
+    const cwd = getCurrentWorkingDirectory(entries)
 
-  if (!lastMessage) {
-    console.error('No assistant message found in transcript')
-    return
+    if (!lastMessage) {
+      // Show what we found to help debug
+      const lastAssistant = entries.slice().reverse().find(e => e.type === 'assistant')
+      log('No assistant message found. Last assistant entry:', lastAssistant)
+      return
+    }
+
+    log('Found message:', lastMessage)
+    log('CWD:', cwd)
+    
+    const truncatedMessage =
+      lastMessage.length > 200 ? `${lastMessage.slice(0, 197)}...` : lastMessage
+    const displayCwd = cwd ? cwd.replace(process.env.HOME || '', '~') : 'Unknown'
+
+    await Promise.all([
+      sendNotification({
+        title: 'Claude Code',
+        message: `${displayCwd}\n\n${truncatedMessage}`,
+        sound: 'Glass', // We'll play our own sound separately
+      }),
+      playSound(options?.soundPath),
+    ])
+    
+    log('Notification sent successfully')
+  } catch (error) {
+    log('Error in handleStopHook:', error)
+    throw error
   }
-
-  const truncatedMessage =
-    lastMessage.length > 200 ? `${lastMessage.slice(0, 197)}...` : lastMessage
-  const displayCwd = cwd ? cwd.replace(process.env.HOME || '', '~') : 'Unknown'
-
-  await Promise.all([
-    sendNotification({
-      title: 'Claude Code',
-      message: `📁 ${displayCwd}\n\n${truncatedMessage}`,
-      sound: 'Glass', // We'll play our own sound separately
-    }),
-    playSound(options?.soundPath),
-  ])
 }
