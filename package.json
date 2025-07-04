@@ -1,0 +1,35 @@
+{
+  "name": "@mariozechner/claude-notify",
+  "version": "0.1.0",
+  "description": "Notification handler for Claude Code hooks with window focus support",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "claude-notify": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "check": "biome check --write . && tsc --noEmit",
+    "prepare": "husky"
+  },
+  "keywords": ["claude", "claude-code", "notifications", "hooks"],
+  "author": "Mario Zechner",
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.2",
+    "@types/node-notifier": "^8.0.5",
+    "husky": "^9.1.7",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "node-notifier": "^10.0.1",
+    "play-sound": "^1.1.6"
+  },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=18"
+  }
+}
