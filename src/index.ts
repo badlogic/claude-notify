@@ -107,15 +107,17 @@ export async function handleStopHook(
       // Remove any existing listeners to prevent duplicates
       notifier.removeAllListeners('click')
       notifier.removeAllListeners('timeout')
-      
+
       // Set up click handler
       notifier.once('click', (notifierObject, options, event) => {
         log('Notification clicked, attempting to focus window')
         const sessionInfo = getSession(input.session_id)
 
         if (sessionInfo) {
-          log(`Found session info: TTY=${sessionInfo.tty}, CWD=${sessionInfo.cwd}`)
-          const focused = focusTerminalWindow(sessionInfo.tty, sessionInfo.cwd)
+          log(
+            `Found session info: PID=${sessionInfo.pid}, App=${sessionInfo.app}, TTY=${sessionInfo.tty}, CWD=${sessionInfo.cwd}`,
+          )
+          const focused = focusTerminalWindow(sessionInfo)
           if (focused) {
             log('Successfully focused terminal window')
           } else {
@@ -126,7 +128,7 @@ export async function handleStopHook(
         }
         resolve()
       })
-      
+
       // Also handle timeout
       notifier.once('timeout', () => {
         log('Notification timed out')

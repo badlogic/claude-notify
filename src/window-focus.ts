@@ -1,6 +1,42 @@
 import { execSync } from 'node:child_process'
 import { log } from './logger'
 
+export function focusTerminalByPID(pid: number, appName: string): boolean {
+  try {
+    log(`Attempting to focus ${appName} window with PID: ${pid}`)
+
+    // Use different approaches based on the terminal app
+    if (appName === 'Terminal') {
+      // For Terminal.app, we use System Events to focus by process ID
+      const appleScript = `
+tell application "System Events"
+    set terminalProcess to first process whose unix id is ${pid}
+    set frontmost of terminalProcess to true
+end tell
+
+tell application "Terminal"
+    activate
+end tell
+`
+      const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
+      log('AppleScript result:', result.trim())
+      return true
+    }
+    // For other apps, try to activate by name
+    const appleScript = `
+tell application "${appName}"
+    activate
+end tell
+`
+    const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
+    log('AppleScript result:', result.trim())
+    return true
+  } catch (error) {
+    log('Error focusing terminal by PID:', error)
+    return false
+  }
+}
+
 export function focusTerminalByTTY(tty: string): boolean {
   try {
     // TTY comes in format like "ttys005", we need to match it exactly
@@ -42,7 +78,7 @@ end tell
 export function focusTerminalByCWD(cwd: string): boolean {
   try {
     log(`Searching for terminal with CWD: ${cwd}`)
-    
+
     // For now, let's disable CWD-based focusing as it's unreliable
     // The `do script` command creates new output in terminals which is intrusive
     log('CWD-based focusing is currently disabled')
@@ -53,16 +89,28 @@ export function focusTerminalByCWD(cwd: string): boolean {
   }
 }
 
-export function focusTerminalWindow(tty: string, cwd?: string): boolean {
-  log(`Attempting to focus terminal - TTY: ${tty}, CWD: ${cwd}`)
+export function focusTerminalWindow(sessionInfo: {
+  pid: number
+  tty: string
+  app: string
+  cwd?: string
+}): boolean {
+  log(
+    `Attempting to focus terminal - PID: ${sessionInfo.pid}, App: ${sessionInfo.app}, TTY: ${sessionInfo.tty}`,
+  )
 
-  // First try focusing by TTY
-  if (focusTerminalByTTY(tty)) {
+  // First try focusing by PID (most reliable)
+  if (focusTerminalByPID(sessionInfo.pid, sessionInfo.app)) {
     return true
   }
 
-  // If that fails and we have a CWD, try by working directory
-  if (cwd && focusTerminalByCWD(cwd)) {
+  // Fallback to TTY matching if PID doesn't work
+  if (focusTerminalByTTY(sessionInfo.tty)) {
+    return true
+  }
+
+  // Last resort: try CWD matching if available
+  if (sessionInfo.cwd && focusTerminalByCWD(sessionInfo.cwd)) {
     return true
   }
 
