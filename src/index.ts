@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
 import notifier from 'node-notifier'
 import { log } from './logger'
+import { getSession, saveSession } from './sessions'
 import { playSound } from './sound'
 import type { HookInput, NotificationOptions, TranscriptEntry } from './types'
+import { focusTerminalWindow } from './window-focus'
 
 export function parseTranscript(transcriptPath: string): TranscriptEntry[] {
   try {
@@ -66,28 +68,57 @@ export async function handleStopHook(
   try {
     log('=== Claude Notify Hook Triggered ===')
     log('Input:', input)
-    
+
     const entries = parseTranscript(input.transcript_path)
-    
+
     log(`Parsed ${entries.length} entries from transcript`)
-    log('Last 3 entry types:', entries.slice(-3).map(e => e.type))
-    
+    log(
+      'Last 3 entry types:',
+      entries.slice(-3).map((e) => e.type),
+    )
+
     const lastMessage = getLastAssistantMessage(entries)
     const cwd = getCurrentWorkingDirectory(entries)
 
     if (!lastMessage) {
       // Show what we found to help debug
-      const lastAssistant = entries.slice().reverse().find(e => e.type === 'assistant')
+      const lastAssistant = entries
+        .slice()
+        .reverse()
+        .find((e) => e.type === 'assistant')
       log('No assistant message found. Last assistant entry:', lastAssistant)
       return
     }
 
     log('Found message:', lastMessage)
     log('CWD:', cwd)
-    
+
+    // Save session info for window focus
+    if (cwd) {
+      saveSession(input.session_id, cwd)
+    }
+
     const truncatedMessage =
       lastMessage.length > 200 ? `${lastMessage.slice(0, 197)}...` : lastMessage
     const displayCwd = cwd ? cwd.replace(process.env.HOME || '', '~') : 'Unknown'
+
+    // Set up click handler before showing notification
+    notifier.on('click', (notifierObject, options, event) => {
+      log('Notification clicked, attempting to focus window')
+      const sessionInfo = getSession(input.session_id)
+
+      if (sessionInfo) {
+        log(`Found session info: TTY=${sessionInfo.tty}, CWD=${sessionInfo.cwd}`)
+        const focused = focusTerminalWindow(sessionInfo.tty, sessionInfo.cwd)
+        if (focused) {
+          log('Successfully focused terminal window')
+        } else {
+          log('Failed to focus terminal window')
+        }
+      } else {
+        log('No session info found for focus')
+      }
+    })
 
     await Promise.all([
       sendNotification({
@@ -97,10 +128,12 @@ export async function handleStopHook(
       }),
       playSound(options?.soundPath),
     ])
-    
+
     log('Notification sent successfully')
   } catch (error) {
     log('Error in handleStopHook:', error)
     throw error
   }
 }
+export * from './sessions'
+export * from './window-focus'

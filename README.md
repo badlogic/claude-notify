@@ -5,7 +5,8 @@ A Node.js notification handler for Claude Code hooks that displays notifications
 ## Features
 
 - Native macOS notifications showing Claude's last message
-- Displays current working directory in notifications
+- **Click notifications to focus the originating terminal window**
+- Displays current working directory in notifications  
 - Customizable sound playback
 - TypeScript support
 - Fast and lightweight

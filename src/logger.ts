@@ -12,12 +12,12 @@ try {
   // Ignore if already exists
 }
 
-export function log(...args: any[]): void {
+export function log(...args: unknown[]): void {
   const timestamp = new Date().toISOString()
-  const message = `[${timestamp}] ${args.map(arg => 
-    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-  ).join(' ')}\n`
-  
+  const message = `[${timestamp}] ${args
+    .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)))
+    .join(' ')}\n`
+
   try {
     appendFileSync(logFile, message)
   } catch (error) {

@@ -1,7 +1,7 @@
 {
   "name": "@mariozechner/claude-notify",
-  "version": "0.1.0",
-  "description": "Notification handler for Claude Code hooks with window focus support",
+  "version": "0.2.0",
+  "description": "Notification handler for Claude Code hooks with click-to-focus terminal window support",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
