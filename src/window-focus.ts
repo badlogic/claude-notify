@@ -22,6 +22,27 @@ end tell
       log('AppleScript result:', result.trim())
       return true
     }
+    
+    if (appName === 'Cursor' || appName === 'Code') {
+      // For VS Code/Cursor, we need to use System Events to focus by PID
+      const appleScript = `
+tell application "System Events"
+    set targetProcess to first process whose unix id is ${pid}
+    set frontmost of targetProcess to true
+    
+    -- Also try to activate by name as backup
+    if name of targetProcess is "Cursor" then
+        tell application "Cursor" to activate
+    else if name of targetProcess contains "Code" then
+        tell application "Visual Studio Code" to activate
+    end if
+end tell
+`
+      const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
+      log('AppleScript result:', result.trim())
+      return true
+    }
+    
     // For other apps, try to activate by name
     const appleScript = `
 tell application "${appName}"

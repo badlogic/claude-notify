@@ -76,8 +76,8 @@ function getProcessTree(startPid: number): ProcessInfo[] {
   let currentPid = startPid
 
   // Walk up the process tree
-  for (let i = 0; i < 10; i++) {
-    // Limit to 10 levels to prevent infinite loops
+  for (let i = 0; i < 20; i++) {
+    // Increased limit to find VS Code/Cursor
     const info = getProcessInfo(currentPid)
     if (!info || info.ppid === 1 || info.ppid === 0) break
 
@@ -112,7 +112,10 @@ export function getTerminalProcessInfo(): { pid: number; tty: string; app: strin
         cmd.includes('alacritty') ||
         cmd.includes('kitty') ||
         cmd.includes('wezterm') ||
-        cmd.includes('hyper')
+        cmd.includes('hyper') ||
+        cmd.includes('cursor') ||
+        cmd.includes('code') ||
+        cmd.includes('visual studio code')
       ) {
         log(`Found terminal process: PID=${proc.pid}, Command=${proc.command}`)
 
@@ -126,6 +129,24 @@ export function getTerminalProcessInfo(): { pid: number; tty: string; app: strin
           }
         }
 
+        // For VS Code/Cursor, we need special handling
+        if (cmd.includes('cursor') || cmd.includes('code')) {
+          // Find the main Cursor/Code process
+          const mainApp = tree.find(p => {
+            const c = p.command.toLowerCase()
+            return (c.includes('cursor.app') || c.includes('code.app') || 
+                   c.includes('visual studio code.app')) && !c.includes('helper')
+          })
+          
+          if (mainApp) {
+            const appName = cmd.includes('cursor') ? 'Cursor' : 'Code'
+            const ttyProc = tree.find((p) => p.tty)
+            if (ttyProc?.tty) {
+              return { pid: mainApp.pid, tty: ttyProc.tty, app: appName }
+            }
+          }
+        }
+        
         // For other terminals, return the process info directly
         if (proc.tty) {
           let app = 'Unknown'
