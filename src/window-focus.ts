@@ -106,12 +106,12 @@ export function focusTerminalByCWD(cwd: string): boolean {
 export function focusCursorWindowByCWD(cwd: string): boolean {
   try {
     log(`Attempting to focus Cursor window with workspace containing: ${cwd}`)
-    
+
     // Extract the workspace folder from the CWD
     // For example: /Users/badlogic/workspaces/claude-hooks/claude-notify -> claude-notify
     const pathParts = cwd.split('/')
     let workspaceName = ''
-    
+
     // Try to find a meaningful workspace name
     if (cwd.includes('/workspaces/')) {
       const idx = pathParts.indexOf('workspaces')
@@ -123,26 +123,30 @@ export function focusCursorWindowByCWD(cwd: string): boolean {
       workspaceName = pathParts.slice(-2).join('/')
     }
     
+    log(`Extracted workspace name: "${workspaceName}" from CWD: "${cwd}"`)
+
     const appleScript = `
 tell application "System Events"
     tell process "Cursor"
         set allWindows to windows
+        set windowTitles to {}
         repeat with w in allWindows
             set windowTitle to name of w
+            set end of windowTitles to windowTitle
             if windowTitle contains "${workspaceName}" then
                 set frontmost of w to true
                 tell application "Cursor" to activate
-                return "Found and focused window: " & windowTitle
+                return "Found and focused window: " & windowTitle & " | All windows: " & (windowTitles as string)
             end if
         end repeat
+        return "No window found containing: ${workspaceName} | All windows: " & (windowTitles as string)
     end tell
 end tell
-return "No window found containing: ${workspaceName}"
 `
-    
+
     const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
     log('Window focus result:', result.trim())
-    
+
     return result.includes('Found and focused')
   } catch (error) {
     log('Error focusing Cursor window by CWD:', error)

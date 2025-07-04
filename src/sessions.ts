@@ -81,18 +81,21 @@ function getProcessTree(startPid: number): ProcessInfo[] {
     // Increased limit to find VS Code/Cursor
     if (seen.has(currentPid)) break
     seen.add(currentPid)
-    
+
     const info = getProcessInfo(currentPid)
     if (!info) break
-    
+
     tree.push(info)
-    
+
     // Don't stop at ppid=1 if we haven't found a terminal app yet
     if (info.ppid === 0) break
     if (info.ppid === 1) {
       // For ppid=1, let's also check if there's a Cursor/Code main process
       try {
-        const psOutput = execSync('ps aux | grep -E "(Cursor|Code).app.*MacOS/(Cursor|Code)" | grep -v grep | grep -v Helper', { encoding: 'utf-8' })
+        const psOutput = execSync(
+          'ps aux | grep -E "(Cursor|Code).app.*MacOS/(Cursor|Code)" | grep -v grep | grep -v Helper',
+          { encoding: 'utf-8' },
+        )
         const lines = psOutput.trim().split('\n').filter(Boolean)
         for (const line of lines) {
           const parts = line.split(/\s+/)

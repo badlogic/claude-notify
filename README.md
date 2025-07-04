@@ -11,6 +11,24 @@ A Node.js notification handler for Claude Code hooks that displays notifications
 - TypeScript support
 - Fast and lightweight
 
+## Requirements
+
+### macOS Accessibility Permissions
+
+For the click-to-focus feature to work properly, you need to grant accessibility permissions to your terminal application:
+
+1. Open **System Settings** → **Privacy & Security** → **Privacy**
+2. Select **Accessibility** from the list
+3. Click the lock icon to make changes
+4. Add and enable the application where you run Claude Code:
+   - **Cursor**: If using Cursor's integrated terminal
+   - **Terminal.app**: If using macOS Terminal
+   - **iTerm2**: If using iTerm2
+   - **VS Code**: If using VS Code's integrated terminal
+   - Or whichever terminal application you use
+
+**Note**: The notification may show "Terminal" as the app name, but you need to grant permissions to the actual application where Claude Code is running.
+
 ## Installation
 
 ```bash
@@ -116,6 +134,22 @@ Logs are written to `~/.claude-notify/log.txt`. Check this file if notifications
 ```bash
 tail -f ~/.claude-notify/log.txt
 ```
+
+### Troubleshooting
+
+#### Click-to-focus not working
+
+1. **Check accessibility permissions**: The most common issue is missing accessibility permissions. You'll see this error in the logs:
+   ```
+   System Events got an error: osascript is not allowed assistive access. (-25211)
+   ```
+   Solution: Grant accessibility permissions to your terminal app (see Requirements section above)
+
+2. **Multiple windows**: If you have multiple Cursor/VS Code windows open, the tool tries to match by workspace name. Make sure your workspace folders have distinct names.
+
+3. **Window title detection**: The tool looks for the workspace name in the window title. Some configurations might not show the workspace name clearly.
+
+4. **Check logs**: Run `tail -f ~/.claude-notify/log.txt` to see detailed information about window detection and focusing attempts.
 
 ## API
 
