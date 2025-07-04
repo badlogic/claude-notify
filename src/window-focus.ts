@@ -22,27 +22,20 @@ end tell
       log('AppleScript result:', result.trim())
       return true
     }
-    
+
     if (appName === 'Cursor' || appName === 'Code') {
-      // For VS Code/Cursor, we need to use System Events to focus by PID
+      // For VS Code/Cursor, we just activate the app for now
+      // The window matching will be done separately
       const appleScript = `
-tell application "System Events"
-    set targetProcess to first process whose unix id is ${pid}
-    set frontmost of targetProcess to true
-    
-    -- Also try to activate by name as backup
-    if name of targetProcess is "Cursor" then
-        tell application "Cursor" to activate
-    else if name of targetProcess contains "Code" then
-        tell application "Visual Studio Code" to activate
-    end if
+tell application "${appName}"
+    activate
 end tell
 `
       const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
       log('AppleScript result:', result.trim())
       return true
     }
-    
+
     // For other apps, try to activate by name
     const appleScript = `
 tell application "${appName}"
@@ -110,6 +103,53 @@ export function focusTerminalByCWD(cwd: string): boolean {
   }
 }
 
+export function focusCursorWindowByCWD(cwd: string): boolean {
+  try {
+    log(`Attempting to focus Cursor window with workspace containing: ${cwd}`)
+    
+    // Extract the workspace folder from the CWD
+    // For example: /Users/badlogic/workspaces/claude-hooks/claude-notify -> claude-notify
+    const pathParts = cwd.split('/')
+    let workspaceName = ''
+    
+    // Try to find a meaningful workspace name
+    if (cwd.includes('/workspaces/')) {
+      const idx = pathParts.indexOf('workspaces')
+      if (idx >= 0 && idx < pathParts.length - 1) {
+        workspaceName = pathParts[idx + 1]
+      }
+    } else {
+      // Use the last two parts of the path
+      workspaceName = pathParts.slice(-2).join('/')
+    }
+    
+    const appleScript = `
+tell application "System Events"
+    tell process "Cursor"
+        set allWindows to windows
+        repeat with w in allWindows
+            set windowTitle to name of w
+            if windowTitle contains "${workspaceName}" then
+                set frontmost of w to true
+                tell application "Cursor" to activate
+                return "Found and focused window: " & windowTitle
+            end if
+        end repeat
+    end tell
+end tell
+return "No window found containing: ${workspaceName}"
+`
+    
+    const result = execSync(`osascript -e '${appleScript}'`, { encoding: 'utf-8' })
+    log('Window focus result:', result.trim())
+    
+    return result.includes('Found and focused')
+  } catch (error) {
+    log('Error focusing Cursor window by CWD:', error)
+    return false
+  }
+}
+
 export function focusTerminalWindow(sessionInfo: {
   pid: number
   tty: string
@@ -117,10 +157,17 @@ export function focusTerminalWindow(sessionInfo: {
   cwd?: string
 }): boolean {
   log(
-    `Attempting to focus terminal - PID: ${sessionInfo.pid}, App: ${sessionInfo.app}, TTY: ${sessionInfo.tty}`,
+    `Attempting to focus terminal - PID: ${sessionInfo.pid}, App: ${sessionInfo.app}, TTY: ${sessionInfo.tty}, CWD: ${sessionInfo.cwd}`,
   )
 
-  // First try focusing by PID (most reliable)
+  // For Cursor/Code, try to focus the specific window by workspace
+  if ((sessionInfo.app === 'Cursor' || sessionInfo.app === 'Code') && sessionInfo.cwd) {
+    if (focusCursorWindowByCWD(sessionInfo.cwd)) {
+      return true
+    }
+  }
+
+  // First try focusing by PID (most reliable for regular terminals)
   if (focusTerminalByPID(sessionInfo.pid, sessionInfo.app)) {
     return true
   }

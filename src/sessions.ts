@@ -74,14 +74,42 @@ function getProcessInfo(pid: number): ProcessInfo | null {
 function getProcessTree(startPid: number): ProcessInfo[] {
   const tree: ProcessInfo[] = []
   let currentPid = startPid
+  const seen = new Set<number>()
 
   // Walk up the process tree
   for (let i = 0; i < 20; i++) {
     // Increased limit to find VS Code/Cursor
+    if (seen.has(currentPid)) break
+    seen.add(currentPid)
+    
     const info = getProcessInfo(currentPid)
-    if (!info || info.ppid === 1 || info.ppid === 0) break
-
+    if (!info) break
+    
     tree.push(info)
+    
+    // Don't stop at ppid=1 if we haven't found a terminal app yet
+    if (info.ppid === 0) break
+    if (info.ppid === 1) {
+      // For ppid=1, let's also check if there's a Cursor/Code main process
+      try {
+        const psOutput = execSync('ps aux | grep -E "(Cursor|Code).app.*MacOS/(Cursor|Code)" | grep -v grep | grep -v Helper', { encoding: 'utf-8' })
+        const lines = psOutput.trim().split('\n').filter(Boolean)
+        for (const line of lines) {
+          const parts = line.split(/\s+/)
+          const pid = Number.parseInt(parts[1])
+          if (pid && pid !== currentPid) {
+            const mainInfo = getProcessInfo(pid)
+            if (mainInfo && !seen.has(pid)) {
+              tree.push(mainInfo)
+              seen.add(pid)
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+      break
+    }
     currentPid = info.ppid
   }
 
@@ -132,12 +160,16 @@ export function getTerminalProcessInfo(): { pid: number; tty: string; app: strin
         // For VS Code/Cursor, we need special handling
         if (cmd.includes('cursor') || cmd.includes('code')) {
           // Find the main Cursor/Code process
-          const mainApp = tree.find(p => {
+          const mainApp = tree.find((p) => {
             const c = p.command.toLowerCase()
-            return (c.includes('cursor.app') || c.includes('code.app') || 
-                   c.includes('visual studio code.app')) && !c.includes('helper')
+            return (
+              (c.includes('cursor.app') ||
+                c.includes('code.app') ||
+                c.includes('visual studio code.app')) &&
+              !c.includes('helper')
+            )
           })
-          
+
           if (mainApp) {
             const appName = cmd.includes('cursor') ? 'Cursor' : 'Code'
             const ttyProc = tree.find((p) => p.tty)
@@ -146,7 +178,7 @@ export function getTerminalProcessInfo(): { pid: number; tty: string; app: strin
             }
           }
         }
-        
+
         // For other terminals, return the process info directly
         if (proc.tty) {
           let app = 'Unknown'
