@@ -5,6 +5,7 @@ import { getSession, saveSession } from './sessions'
 import { playSound } from './sound'
 import type { HookInput, NotificationOptions, TranscriptEntry } from './types'
 import { focusTerminalWindow } from './window-focus'
+import { IS_MACOS, getPlatformName } from './platform'
 
 export function parseTranscript(transcriptPath: string): TranscriptEntry[] {
   try {
@@ -93,8 +94,8 @@ export async function handleStopHook(
     log('Found message:', lastMessage)
     log('CWD:', cwd)
 
-    // Save session info for window focus
-    if (cwd) {
+    // Save session info for window focus (macOS only)
+    if (IS_MACOS && cwd) {
       saveSession(input.session_id, cwd)
     }
 
@@ -102,8 +103,8 @@ export async function handleStopHook(
       lastMessage.length > 200 ? `${lastMessage.slice(0, 197)}...` : lastMessage
     const displayCwd = cwd ? cwd.replace(process.env.HOME || '', '~') : 'Unknown'
 
-    // Create a promise that resolves when notification is interacted with
-    const notificationPromise = new Promise<void>((resolve) => {
+    // Only set up click handlers on macOS where we support window focusing
+    if (IS_MACOS) {
       // Remove any existing listeners to prevent duplicates
       notifier.removeAllListeners('click')
       notifier.removeAllListeners('timeout')
@@ -126,15 +127,15 @@ export async function handleStopHook(
         } else {
           log('No session info found for focus')
         }
-        resolve()
       })
 
       // Also handle timeout
       notifier.once('timeout', () => {
         log('Notification timed out')
-        resolve()
       })
-    })
+    } else {
+      log(`Click-to-focus not supported on ${getPlatformName()}`);
+    }
 
     await Promise.all([
       sendNotification({
@@ -154,3 +155,4 @@ export async function handleStopHook(
 }
 export * from './sessions'
 export * from './window-focus'
+export * from './platform'

@@ -1,7 +1,12 @@
 import { execSync } from 'node:child_process'
 import { log } from './logger'
+import { IS_MACOS } from './platform'
 
 export function focusTerminalByPID(pid: number, appName: string): boolean {
+  if (!IS_MACOS) {
+    return false
+  }
+  
   try {
     log(`Attempting to focus ${appName} window with PID: ${pid}`)
 
@@ -52,6 +57,10 @@ end tell
 }
 
 export function focusTerminalByTTY(tty: string): boolean {
+  if (!IS_MACOS) {
+    return false
+  }
+  
   try {
     // TTY comes in format like "ttys005", we need to match it exactly
     log(`Searching for terminal with TTY: ${tty}`)
@@ -90,6 +99,10 @@ end tell
 }
 
 export function focusTerminalByCWD(cwd: string): boolean {
+  if (!IS_MACOS) {
+    return false
+  }
+  
   try {
     log(`Searching for terminal with CWD: ${cwd}`)
 
@@ -104,6 +117,10 @@ export function focusTerminalByCWD(cwd: string): boolean {
 }
 
 export function focusCursorWindowByCWD(cwd: string): boolean {
+  if (!IS_MACOS) {
+    return false
+  }
+  
   try {
     log(`Attempting to focus Cursor window with workspace containing: ${cwd}`)
 
@@ -122,24 +139,57 @@ export function focusCursorWindowByCWD(cwd: string): boolean {
       // Use the last two parts of the path
       workspaceName = pathParts.slice(-2).join('/')
     }
-    
+
     log(`Extracted workspace name: "${workspaceName}" from CWD: "${cwd}"`)
 
+    // Also try with just the folder name, not the full path component
+    const folderName = pathParts[pathParts.length - 1] || workspaceName
+    log(`Also trying folder name: "${folderName}"`)
+    
+    // Escape single quotes in the search terms
+    const escapedWorkspaceName = workspaceName.replace(/'/g, "\\'")
+    const escapedFolderName = folderName.replace(/'/g, "\\'")
+    
     const appleScript = `
 tell application "System Events"
     tell process "Cursor"
         set allWindows to windows
-        set windowTitles to {}
+        set windowCount to count of allWindows
+        set foundWindow to false
+        set matchedTitle to ""
+        
+        -- Check each window
         repeat with w in allWindows
             set windowTitle to name of w
-            set end of windowTitles to windowTitle
-            if windowTitle contains "${workspaceName}" then
-                set frontmost of w to true
-                tell application "Cursor" to activate
-                return "Found and focused window: " & windowTitle & " | All windows: " & (windowTitles as string)
+            
+            -- Use offset to check if title contains our search term
+            if (offset of "${escapedWorkspaceName}" in windowTitle) > 0 then
+                -- Found it! Focus this window
+                perform action "AXRaise" of w
+                set foundWindow to true
+                set matchedTitle to windowTitle
+                exit repeat
+            else if (offset of "${escapedFolderName}" in windowTitle) > 0 then
+                -- Found it! Focus this window
+                perform action "AXRaise" of w
+                set foundWindow to true
+                set matchedTitle to windowTitle
+                exit repeat
             end if
         end repeat
-        return "No window found containing: ${workspaceName} | All windows: " & (windowTitles as string)
+        
+        -- After finding the window, activate Cursor
+        if foundWindow then
+            tell application "Cursor" to activate
+            return "Successfully focused window: " & matchedTitle
+        else
+            -- Build list of all window titles for debugging
+            set allTitles to {}
+            repeat with w in allWindows
+                set end of allTitles to name of w
+            end repeat
+            return "No window found. Windows: " & (allTitles as string)
+        end if
     end tell
 end tell
 `

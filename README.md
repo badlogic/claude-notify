@@ -4,18 +4,26 @@ A Node.js notification handler for Claude Code hooks that displays notifications
 
 ## Features
 
-- Native macOS notifications showing Claude's last message
-- **Click notifications to focus the originating terminal window**
+- Cross-platform notifications showing Claude's last message
+- **Click notifications to focus the originating terminal window** (macOS only)
 - Displays current working directory in notifications  
 - Customizable sound playback
 - TypeScript support
 - Fast and lightweight
 
+## Platform Support
+
+- **macOS**: Full support including click-to-focus window functionality
+- **Linux**: Notifications and sound (requires `notify-send` and audio player)
+- **Windows**: Basic notification support
+
 ## Requirements
 
-### macOS Accessibility Permissions
+### macOS
 
-For the click-to-focus feature to work properly, you need to grant accessibility permissions to your terminal application:
+#### Accessibility Permissions
+
+For the click-to-focus feature to work, you need to grant accessibility permissions to your terminal application:
 
 1. Open **System Settings** → **Privacy & Security** → **Privacy**
 2. Select **Accessibility** from the list
@@ -28,6 +36,16 @@ For the click-to-focus feature to work properly, you need to grant accessibility
    - Or whichever terminal application you use
 
 **Note**: The notification may show "Terminal" as the app name, but you need to grant permissions to the actual application where Claude Code is running.
+
+### Linux
+
+- **Notifications**: Requires `notify-send` (usually pre-installed with desktop environments)
+- **Sound**: Optional - supports `paplay` (PulseAudio), `aplay` (ALSA), or `play` (SoX)
+
+### Windows
+
+- Notifications work out of the box
+- Sound uses system beep
 
 ## Installation
 
