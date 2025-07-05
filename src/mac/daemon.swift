@@ -18,6 +18,7 @@ struct SessionInfo: Codable, Identifiable {
     enum SessionStatus: String, Codable {
         case working = "working"
         case idle = "idle"
+        case exited = "exited"
     }
 }
 
@@ -66,8 +67,14 @@ class SessionManager: ObservableObject {
             logger?.log("Created new session: \(hookMessage.sessionId) with pid: \(hookMessage.pid)")
         }
 
-        // Sort sessions by timestamp (newest first)
-        sessions.sort { $0.timestamp > $1.timestamp }
+        // Sort sessions: idle first, then working, then exited, newest first within each group
+        sessions.sort { 
+            if $0.status == $1.status {
+                return $0.timestamp > $1.timestamp
+            }
+            let order: [SessionInfo.SessionStatus: Int] = [.idle: 0, .working: 1, .exited: 2]
+            return order[$0.status]! < order[$1.status]!
+        }
         logger?.log("Total sessions: \(sessions.count)")
     }
 
@@ -90,19 +97,14 @@ class SessionManager: ObservableObject {
         lock.lock()
         defer { lock.unlock() }
 
-        let beforeCount = sessions.count
-        sessions.removeAll { session in
+        for index in sessions.indices {
             // Check if process is still alive
-            let result = kill(session.pid, 0)
+            let result = kill(sessions[index].pid, 0)
             let isDead = result != 0 && errno == ESRCH
-            if isDead {
-                logger?.log("Removing dead session: \(session.id) with pid: \(session.pid)")
+            if isDead && sessions[index].status != .exited {
+                logger?.log("Marking session as exited: \(sessions[index].id) with pid: \(sessions[index].pid)")
+                sessions[index].status = .exited
             }
-            return isDead
-        }
-
-        if beforeCount != sessions.count {
-            logger?.log("Session count changed from \(beforeCount) to \(sessions.count)")
         }
     }
 
@@ -352,8 +354,8 @@ struct ControlCenterView: View {
                 Text("Claude Code Sessions")
                     .font(.headline)
                 Spacer()
-                Button("Clear All") {
-                    sessionManager.sessions.removeAll()
+                Button("Clear Exited") {
+                    sessionManager.sessions.removeAll { $0.status == .exited }
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
@@ -393,7 +395,11 @@ struct SessionRow: View {
     let session: SessionInfo
 
     var statusIcon: String {
-        session.status == .idle ? "🟡" : "🟢"
+        switch session.status {
+        case .idle: return "🟡"
+        case .working: return "🟢"
+        case .exited: return "🔴"
+        }
     }
 
     var displayCwd: String {
@@ -422,6 +428,7 @@ struct SessionRow: View {
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+        .opacity(session.status == .exited ? 0.6 : 1.0)
     }
 }
 
@@ -481,7 +488,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let menu = NSMenu()
             menu.addItem(NSMenuItem(title: "Show Control Center", action: #selector(toggleControlCenter), keyEquivalent: ""))
             menu.addItem(NSMenuItem.separator())
-            menu.addItem(NSMenuItem(title: "Clear All", action: #selector(clearAll), keyEquivalent: ""))
+            menu.addItem(NSMenuItem(title: "Clear Exited", action: #selector(clearExited), keyEquivalent: ""))
             menu.addItem(NSMenuItem.separator())
             menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
 
@@ -570,8 +577,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         controlWindow = nil
     }
 
-    @objc private func clearAll() {
-        sessionManager.sessions.removeAll()
+    @objc private func clearExited() {
+        sessionManager.sessions.removeAll { $0.status == .exited }
     }
 
     @objc private func quit() {
