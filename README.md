@@ -1,33 +1,40 @@
 # @mariozechner/claude-notify
 
-A simple notification handler for Claude Code hooks that displays notifications with the assistant's last message and current working directory when a Claude Code session stops.
+A comprehensive notification system for Claude Code that tracks session status and displays notifications when Claude is waiting for input.
 
 ## Features
 
-- Cross-platform notifications showing Claude's last message
-- Displays current working directory in notifications  
-- Notification sound (Glass on macOS, system beep on other platforms)
-- TypeScript support
-- Fast and lightweight
+### macOS
+- **Menu Bar Icon**: Shows Claude session count with badge
+- **Control Center**: View all active sessions in one place
+- **System Notifications**: Get notified when Claude is waiting
+- **Session Tracking**: Automatically tracks working/idle status
+- **Sound Alerts**: Plays Glass sound when Claude needs attention
+- **Auto-Cleanup**: Removes dead sessions automatically
+
+### Linux/Windows
+- **Desktop Notifications**: Shows notifications with Claude's last message
+- **Sound Alerts**: Plays system beep
+- **Context Aware**: Displays the current working directory
+- **Persistent Notifications**: On macOS with built-in alerter
 
 ## Platform Support
 
-- **macOS**: Full notification support with Glass sound
+- **macOS**: Full daemon support with menu bar icon and control center
 - **Linux**: Notifications (requires `notify-send`) and system beep
 - **Windows**: Notifications with system beep
 
 ## Requirements
 
 ### macOS
-
-- Works out of the box with system notifications
+- Works out of the box with built-in daemon and notifications
+- Menu bar icon shows session count
+- Control center accessible via menu bar click
 
 ### Linux
-
 - **Notifications**: Requires `notify-send` (usually pre-installed with desktop environments)
 
 ### Windows
-
 - Notifications work out of the box
 
 ## Installation
@@ -40,40 +47,103 @@ npm install -g @mariozechner/claude-notify
 
 ### Quick Setup
 
-The easiest way to set up claude-notify is to use the automatic installation:
+After installation, run:
 
 ```bash
 claude-notify -install
 ```
 
-This will automatically add claude-notify as a Stop hook in your Claude Code settings.
+This will automatically add claude-notify to all Claude Code hooks (PreToolUse, PostToolUse, Stop, SubagentStop, and Notification).
+
+### How It Works
+
+#### On macOS
+1. Claude Notify runs a background daemon that:
+   - Shows a menu bar icon with the number of waiting sessions
+   - Tracks all Claude Code sessions by PID
+   - Updates session status based on hook activity
+   - Sends system notifications when Claude is waiting
+   - Provides a control center UI to view all sessions
+
+2. Click the menu bar icon to:
+   - View all active sessions
+   - See session status (green = working, yellow = waiting)
+   - Clear all sessions
+   - Quit the daemon
+
+#### On Linux/Windows
+- Shows desktop notifications when Claude stops or sends notifications
+- Plays notification sounds
+- No daemon or menu bar (uses simple notifications)
+
+### Test Notifications
+
+To test if notifications are working correctly:
+
+```bash
+claude-notify -test
+```
+
+This will send a test notification and check your system configuration.
 
 ### Manual Setup
 
-Alternatively, you can set up the hook manually:
-
-1. Open Claude Code and run the `/hooks` slash command
-2. Select the `Stop` hook event
-3. Add a new hook with the following command:
-
-```bash
-claude-notify
-```
-
-4. Save your configuration to user settings
-
-The hook configuration in your `~/.claude/settings.json` should look like:
+If you prefer to set it up manually, add this to your `~/.claude/settings.json`:
 
 ```json
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-notify PreToolUse"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-notify PostToolUse"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "claude-notify"
+            "command": "claude-notify Stop"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-notify SubagentStop"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "claude-notify Notification"
           }
         ]
       }
@@ -82,77 +152,17 @@ The hook configuration in your `~/.claude/settings.json` should look like:
 }
 ```
 
+## Troubleshooting
+
+1. **Daemon not starting (macOS)**: Check daemon logs at `~/.claude-notify/daemon.log`
+2. **Menu bar icon not appearing**: Ensure the daemon is running (`ps aux | grep ClaudeNotifyDaemon`)
+3. **Notifications not appearing**: Check logs at `~/.claude-notify/log.txt`
+4. **Sound not playing**: The tool uses system sounds (Glass on macOS, beep on Linux/Windows)
+5. **Hook not triggering**: Verify hooks are properly configured in your Claude Code settings
+
 ## Development
 
-```bash
-# Clone the repository
-git clone https://github.com/mariozechner/claude-notify.git
-cd claude-notify
-
-# Install dependencies
-npm install
-
-# Link the package globally for testing
-npm link
-
-# Run in development mode (watches for changes and rebuilds automatically)
-npm run dev
-
-# In another terminal, test the CLI
-claude-notify --help
-
-# Run checks (linting, formatting, type checking)
-npm run check
-
-# Build for production
-npm run build
-
-# Unlink when done testing
-npm unlink -g @mariozechner/claude-notify
-```
-
-### Testing with Claude Code
-
-1. Run `npm link` to make `claude-notify` available globally
-2. Run `npm run dev` to watch for changes
-3. Install the hook: `claude-notify -install`
-4. Test by running Claude Code and waiting for it to stop
-5. Make changes to the source - they'll be automatically rebuilt
-6. Test again without reinstalling
-
-### Debugging
-
-Logs are written to `~/.claude-notify/log.txt`. Check this file if notifications aren't working as expected:
-
-```bash
-tail -f ~/.claude-notify/log.txt
-```
-
-### Troubleshooting
-
-1. **Notifications not appearing**: Check the logs at `~/.claude-notify/log.txt`
-2. **Sound not playing**: The tool uses system sounds (Glass on macOS, beep on Linux/Windows)
-3. **Hook not triggering**: Verify the hook is properly configured in your Claude Code settings
-
-## API
-
-### `handleStopHook(input: HookInput)`
-
-Main function that processes the Claude Code stop hook data.
-
-- `input`: The hook input data from Claude Code containing session ID and transcript path
-
-### `parseTranscript(transcriptPath: string): TranscriptEntry[]`
-
-Parses a Claude Code transcript JSONL file.
-
-### `getLastAssistantMessage(entries: TranscriptEntry[]): string | null`
-
-Extracts the last assistant message from transcript entries.
-
-### `getCurrentWorkingDirectory(entries: TranscriptEntry[]): string | null`
-
-Gets the current working directory from transcript entries.
+See [docs/development.md](docs/development.md) for development setup and [docs/build.md](docs/build.md) for build instructions.
 
 ## License
 

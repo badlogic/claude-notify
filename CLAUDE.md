@@ -1,2 +1,3 @@
 - Always read hooks.md, the documentation for Claude Code hooks, at the start of a converation.
 - NEVER commit and push without the user instructing you directly to do so.
+- If you make changes to .ts code, run npm run check and fix all issues

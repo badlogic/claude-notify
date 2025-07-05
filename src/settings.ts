@@ -2,67 +2,95 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+interface HookConfig {
+  matcher: string
+  hooks: Array<{
+    type: string
+    command: string
+  }>
+}
+
 interface ClaudeSettings {
   hooks?: {
-    Stop?: Array<{
-      matcher: string
-      hooks: Array<{
-        type: string
-        command: string
-      }>
-    }>
+    PreToolUse?: HookConfig[]
+    PostToolUse?: HookConfig[]
+    Stop?: HookConfig[]
+    SubagentStop?: HookConfig[]
+    Notification?: HookConfig[]
   }
 }
 
-export function installStopHook(): void {
-  const settingsPath = join(homedir(), '.claude', 'settings.json')
+const HOOK_TYPES = ['PreToolUse', 'PostToolUse', 'Stop', 'SubagentStop', 'Notification'] as const
+const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json')
 
-  // Ensure settings file exists
+function readSettings(): ClaudeSettings {
   let settings: ClaudeSettings = {}
-  if (existsSync(settingsPath)) {
+  if (existsSync(CLAUDE_SETTINGS_PATH)) {
     try {
-      const content = readFileSync(settingsPath, 'utf-8')
+      const content = readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8')
       settings = JSON.parse(content)
     } catch (error) {
       console.error(`Error reading settings file: ${error}`)
       process.exit(1)
     }
   }
+  return settings
+}
 
-  // Initialize hooks structure if needed
+export function installAllHooks(): void {
+  uninstallAllHooks(false)
+  const settings = readSettings()
   if (!settings.hooks) {
     settings.hooks = {}
   }
-  if (!settings.hooks.Stop) {
-    settings.hooks.Stop = []
+
+  for (const hookType of HOOK_TYPES) {
+    if (!settings.hooks[hookType]) {
+      settings.hooks[hookType] = []
+    }
+
+    const command = settings.hooks[hookType]!.push({
+      matcher: '',
+      hooks: [
+        {
+          type: 'command',
+          command: `claude-notify ${hookType}`,
+        },
+      ],
+    })
   }
 
-  // Check if claude-notify is already installed
-  const existingHook = settings.hooks.Stop.find((stopHook) =>
-    stopHook.hooks.some((hook) => hook.type === 'command' && hook.command === 'claude-notify'),
-  )
-
-  if (existingHook) {
-    console.log('✓ claude-notify is already installed as a Stop hook')
-    return
-  }
-
-  // Add claude-notify hook
-  settings.hooks.Stop.push({
-    matcher: '',
-    hooks: [
-      {
-        type: 'command',
-        command: 'claude-notify',
-      },
-    ],
-  })
-
-  // Write settings back
   try {
-    writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
-    console.log('✓ Successfully installed claude-notify as a Stop hook')
-    console.log(`  Settings file: ${settingsPath}`)
+    writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))
+    console.log('✓ Successfully installed claude-notify hooks')
+    console.log(`  Settings file: ${CLAUDE_SETTINGS_PATH}`)
+  } catch (error) {
+    console.error(`Error writing settings file: ${error}`)
+    process.exit(1)
+  }
+}
+
+export function uninstallAllHooks(log = true) {
+  const settings = readSettings()
+  for (const hookType of HOOK_TYPES) {
+    if (!settings.hooks || !settings.hooks[hookType]) {
+      continue
+    }
+
+    settings.hooks[hookType] = settings.hooks[hookType]!.filter(
+      (hookConfig) =>
+        !hookConfig.hooks.some(
+          (hook) => hook.type === 'command' && hook.command.startsWith('claude-notify '),
+        ),
+    )
+  }
+
+  try {
+    writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2))
+    if (log) {
+      console.log('✓ Successfully uninstalled claude-notify hooks')
+      console.log(`  Settings file: ${CLAUDE_SETTINGS_PATH}`)
+    }
   } catch (error) {
     console.error(`Error writing settings file: ${error}`)
     process.exit(1)

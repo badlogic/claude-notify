@@ -3,21 +3,14 @@ import { platform } from 'node:os'
 import { promisify } from 'node:util'
 import { log } from './logger'
 
-const execAsync = promisify(exec)
-const IS_MACOS = platform() === 'darwin'
-const IS_LINUX = platform() === 'linux'
-const IS_WINDOWS = platform() === 'win32'
-
 export async function playSound(): Promise<void> {
   try {
-    if (IS_MACOS) {
-      // Play Glass sound on macOS
+    const execAsync = promisify(exec)
+    if (platform() === 'darwin') {
       await execAsync('afplay /System/Library/Sounds/Glass.aiff')
-    } else if (IS_LINUX) {
-      // Use system beep/bell on Linux
+    } else if (platform() === 'linux') {
       await execAsync('echo -e "\\a"')
-    } else if (IS_WINDOWS) {
-      // Windows PowerShell beep
+    } else if (platform() === 'win32') {
       await execAsync('powershell -c "[console]::beep()"')
     } else {
       log(`Sound playback not implemented for ${platform()}`)

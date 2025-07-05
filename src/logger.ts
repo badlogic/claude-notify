@@ -4,13 +4,9 @@ import { join } from 'node:path'
 
 const logDir = join(homedir(), '.claude-notify')
 const logFile = join(logDir, 'log.txt')
-
-// Ensure log directory exists
 try {
   mkdirSync(logDir, { recursive: true })
-} catch (error) {
-  // Ignore if already exists
-}
+} catch (error) {}
 
 export function log(...args: unknown[]): void {
   const timestamp = new Date().toISOString()
@@ -20,7 +16,5 @@ export function log(...args: unknown[]): void {
 
   try {
     appendFileSync(logFile, message)
-  } catch (error) {
-    // Fail silently
-  }
+  } catch (error) {}
 }
