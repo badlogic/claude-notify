@@ -44,6 +44,7 @@ You MUST follow these steps exactly:
          * Type of change needed (add/modify/delete)
        - Present the HOW findings as a checkbox list in the format for docs/todo.md:
          * Each implementation step should be a checkbox: `- [ ] Step description`
+         * Include test steps at the end: `- [ ] Test: specific test instructions`
        - STOP and ask: "Does this implementation plan look correct? (yes/no)"
        - If no, gather more information or adjust
 
@@ -72,14 +73,18 @@ You MUST follow these steps exactly:
         - Use mcp__vs-claude__open with an array of all modified files:
           `[{"type": "gitDiff", "path": "/path/to/file1", "from": "HEAD", "to": "working"},
             {"type": "gitDiff", "path": "/path/to/file2", "from": "HEAD", "to": "working"}]`
-        - STOP and ask: "Please review the changes. Ready to commit? (yes/no)"
+        - Extract test steps from HOW section (lines starting with `- [ ] Test:`)
+        - Present test instructions to user as a numbered list
+        - STOP and ask: "Please review the changes and test. Ready to commit? (yes/no)"
       * After user confirms:
         - Commit all changes with a descriptive message
         - Push to remote repository
         - Get commit hash and construct GitHub URL:
           `https://github.com/[owner]/[repo]/commit/[hash]`
     - Update docs/todo.md:
+      * First, check off all test steps:
+        - Use Edit tool to change `- [ ] Test:` to `- [x] Test:` for all test items
       * Use Edit tool with replace_all=true to remove the TODO from ### Open section
         (replace the exact TODO string with empty string)
       * Use Edit tool to insert the FULL completed TODO at line 2:
-        `- [x] [full TODO content including WHAT and HOW] ([commit URL])`
+        `- [x] [full TODO content including WHAT and HOW with all boxes checked] ([commit URL])`
