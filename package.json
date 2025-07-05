@@ -11,7 +11,8 @@
     "build": "tsc --noEmit && tsup && npm run build:daemon",
     "build:daemon": "bash scripts/build-daemon.sh debug || echo 'Daemon build skipped (macOS only)'",
     "clean": "rm -rf dist .build ~/.claude-notify/daemon.log ~/.claude-notify/log.txt",
-    "dev": "tsup --watch",
+    "dev": "npm run kill-daemon && tsup --watch --onSuccess 'npm run build:daemon'",
+    "kill-daemon": "pkill -f ClaudeNotifyDaemon || true",
     "check": "biome check --write . && tsc --noEmit",
     "prepare": "husky"
   },
