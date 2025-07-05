@@ -359,6 +359,15 @@ struct ControlCenterView: View {
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
+                
+                Button("Shutdown") {
+                    if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                        appDelegate.performSelector(onMainThread: #selector(AppDelegate.quit), with: nil, waitUntilDone: false)
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundColor(.red)
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
@@ -483,16 +492,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.image = NSImage(systemSymbolName: "message.fill", accessibilityDescription: "Claude Notify")
             button.action = #selector(toggleControlCenter)
             button.target = self
-
-            // Right-click menu
-            let menu = NSMenu()
-            menu.addItem(NSMenuItem(title: "Show Control Center", action: #selector(toggleControlCenter), keyEquivalent: ""))
-            menu.addItem(NSMenuItem.separator())
-            menu.addItem(NSMenuItem(title: "Clear Exited", action: #selector(clearExited), keyEquivalent: ""))
-            menu.addItem(NSMenuItem.separator())
-            menu.addItem(NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q"))
-
-            statusItem?.menu = menu
         }
     }
 
@@ -581,7 +580,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sessionManager.sessions.removeAll { $0.status == .exited }
     }
 
-    @objc private func quit() {
+    @objc func quit() {
         logger.log("Claude Notify daemon shutting down...")
         socketServer?.stop()
         NSApplication.shared.terminate(nil)
