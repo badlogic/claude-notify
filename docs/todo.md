@@ -1,7 +1,7 @@
 ### Completed
 - [x] When we detect a session has exited, we need to immediately resort the session list
   **WHAT**: When the daemon detects a session has exited (process no longer exists), the session list should immediately resort to move the exited session to the bottom of the list. The resort should happen as soon as the session status is changed to `.exited` in the `removeDeadSessions()` method. The sorting order should remain the same: idle sessions first, working sessions second, exited sessions last (newest first within each group). The UI should update immediately to reflect the new order without waiting for new hook messages.
-  
+
   **HOW**:
   - [x] Extract the sorting logic from `updateSession()` (lines 71-77) into a new private method `sortSessions()` in SessionManager in src/mac/daemon.swift
   - [x] Call `sortSessions()` in `removeDeadSessions()` after marking sessions as exited (after line 107) in src/mac/daemon.swift
@@ -61,5 +61,6 @@
     (https://github.com/badlogic/claude-notify/commit/e8dcca2cbf889a7496ad8dd861f892f1f6bf4247)
 
 ### Open
+- [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] We should track when we started monitoring a session and display for how long it has been running already
 - [ ] We should be able to say "do not display notifications for this session" in the control window
