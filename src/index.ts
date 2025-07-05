@@ -1,11 +1,8 @@
 import { readFileSync } from 'node:fs'
 import notifier from 'node-notifier'
 import { log } from './logger'
-import { getSession, saveSession } from './sessions'
 import { playSound } from './sound'
-import type { HookInput, NotificationOptions, TranscriptEntry } from './types'
-import { focusTerminalWindow } from './window-focus'
-import { IS_MACOS, getPlatformName } from './platform'
+import type { HookInput, TranscriptEntry } from './types'
 
 export function parseTranscript(transcriptPath: string): TranscriptEntry[] {
   try {
@@ -44,115 +41,38 @@ export function getCurrentWorkingDirectory(entries: TranscriptEntry[]): string |
   return null
 }
 
-export function sendNotification(options: NotificationOptions): Promise<void> {
-  return new Promise((resolve, reject) => {
-    notifier.notify(
-      {
-        title: options.title,
-        message: options.message,
-        sound: options.sound || 'Glass',
-        timeout: options.timeout !== undefined ? options.timeout : false, // Disable auto-dismiss by default
-        wait: options.wait !== undefined ? options.wait : true, // Keep notification until clicked by default
-      },
-      (err: Error | null) => {
-        if (err) reject(err)
-        else resolve()
-      },
-    )
-  })
-}
-
-export async function handleStopHook(
-  input: HookInput,
-  options?: { soundPath?: string },
-): Promise<void> {
+export async function handleStopHook(input: HookInput): Promise<void> {
   try {
-    log('=== Claude Notify Hook Triggered ===')
-    log('Input:', input)
-
     const entries = parseTranscript(input.transcript_path)
-
-    log(`Parsed ${entries.length} entries from transcript`)
-    log(
-      'Last 3 entry types:',
-      entries.slice(-3).map((e) => e.type),
-    )
-
     const lastMessage = getLastAssistantMessage(entries)
     const cwd = getCurrentWorkingDirectory(entries)
 
     if (!lastMessage) {
-      // Show what we found to help debug
-      const lastAssistant = entries
-        .slice()
-        .reverse()
-        .find((e) => e.type === 'assistant')
-      log('No assistant message found. Last assistant entry:', lastAssistant)
+      log('No assistant message found. Last assistant entry:', lastMessage)
       return
     }
 
-    log('Found message:', lastMessage)
-    log('CWD:', cwd)
-
-    // Save session info for window focus (macOS only)
-    if (IS_MACOS && cwd) {
-      saveSession(input.session_id, cwd)
-    }
-
-    const truncatedMessage =
-      lastMessage.length > 200 ? `${lastMessage.slice(0, 197)}...` : lastMessage
     const displayCwd = cwd ? cwd.replace(process.env.HOME || '', '~') : 'Unknown'
 
-    // Only set up click handlers on macOS where we support window focusing
-    if (IS_MACOS) {
-      // Remove any existing listeners to prevent duplicates
-      notifier.removeAllListeners('click')
-      notifier.removeAllListeners('timeout')
-
-      // Set up click handler
-      notifier.once('click', (notifierObject, options, event) => {
-        log('Notification clicked, attempting to focus window')
-        const sessionInfo = getSession(input.session_id)
-
-        if (sessionInfo) {
-          log(
-            `Found session info: PID=${sessionInfo.pid}, App=${sessionInfo.app}, TTY=${sessionInfo.tty}, CWD=${sessionInfo.cwd}`,
-          )
-          const focused = focusTerminalWindow(sessionInfo)
-          if (focused) {
-            log('Successfully focused terminal window')
-          } else {
-            log('Failed to focus terminal window')
-          }
-        } else {
-          log('No session info found for focus')
-        }
-      })
-
-      // Also handle timeout
-      notifier.once('timeout', () => {
-        log('Notification timed out')
-      })
-    } else {
-      log(`Click-to-focus not supported on ${getPlatformName()}`);
-    }
-
     await Promise.all([
-      sendNotification({
-        title: 'Claude Code',
-        message: `${displayCwd}\n\n${truncatedMessage}`,
-        sound: 'Glass', // We'll play our own sound separately
-        wait: true, // This is crucial for click events
+      new Promise<void>((resolve, reject) => {
+        notifier.notify(
+          {
+            title: 'Claude Code',
+            message: `${displayCwd}\n\n${lastMessage}`,
+            sound: false, // We'll play our own sound separately
+            wait: true,
+          },
+          (err) => {
+            if (err) reject(err)
+            else resolve()
+          },
+        )
       }),
-      playSound(options?.soundPath),
+      playSound(),
     ])
-
-    log('Notification sent successfully')
   } catch (error) {
     log('Error in handleStopHook:', error)
     throw error
   }
 }
-export * from './sessions'
-export * from './window-focus'
-export * from './platform'

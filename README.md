@@ -1,51 +1,34 @@
 # @mariozechner/claude-notify
 
-A Node.js notification handler for Claude Code hooks that displays notifications with the assistant's last message and current working directory when a Claude Code session stops.
+A simple notification handler for Claude Code hooks that displays notifications with the assistant's last message and current working directory when a Claude Code session stops.
 
 ## Features
 
 - Cross-platform notifications showing Claude's last message
-- **Click notifications to focus the originating terminal window** (macOS only)
 - Displays current working directory in notifications  
-- Customizable sound playback
+- Notification sound (Glass on macOS, system beep on other platforms)
 - TypeScript support
 - Fast and lightweight
 
 ## Platform Support
 
-- **macOS**: Full support including click-to-focus window functionality
-- **Linux**: Notifications and sound (requires `notify-send` and audio player)
-- **Windows**: Basic notification support
+- **macOS**: Full notification support with Glass sound
+- **Linux**: Notifications (requires `notify-send`) and system beep
+- **Windows**: Notifications with system beep
 
 ## Requirements
 
 ### macOS
 
-#### Accessibility Permissions
-
-For the click-to-focus feature to work, you need to grant accessibility permissions to your terminal application:
-
-1. Open **System Settings** → **Privacy & Security** → **Privacy**
-2. Select **Accessibility** from the list
-3. Click the lock icon to make changes
-4. Add and enable the application where you run Claude Code:
-   - **Cursor**: If using Cursor's integrated terminal
-   - **Terminal.app**: If using macOS Terminal
-   - **iTerm2**: If using iTerm2
-   - **VS Code**: If using VS Code's integrated terminal
-   - Or whichever terminal application you use
-
-**Note**: The notification may show "Terminal" as the app name, but you need to grant permissions to the actual application where Claude Code is running.
+- Works out of the box with system notifications
 
 ### Linux
 
 - **Notifications**: Requires `notify-send` (usually pre-installed with desktop environments)
-- **Sound**: Optional - supports `paplay` (PulseAudio), `aplay` (ALSA), or `play` (SoX)
 
 ### Windows
 
 - Notifications work out of the box
-- Sound uses system beep
 
 ## Installation
 
@@ -99,14 +82,6 @@ The hook configuration in your `~/.claude/settings.json` should look like:
 }
 ```
 
-### Custom Sound
-
-You can specify a custom sound file by modifying the hook command:
-
-```bash
-claude-notify --sound /path/to/sound.aiff
-```
-
 ## Development
 
 ```bash
@@ -155,28 +130,17 @@ tail -f ~/.claude-notify/log.txt
 
 ### Troubleshooting
 
-#### Click-to-focus not working
-
-1. **Check accessibility permissions**: The most common issue is missing accessibility permissions. You'll see this error in the logs:
-   ```
-   System Events got an error: osascript is not allowed assistive access. (-25211)
-   ```
-   Solution: Grant accessibility permissions to your terminal app (see Requirements section above)
-
-2. **Multiple windows**: If you have multiple Cursor/VS Code windows open, the tool tries to match by workspace name. Make sure your workspace folders have distinct names.
-
-3. **Window title detection**: The tool looks for the workspace name in the window title. Some configurations might not show the workspace name clearly.
-
-4. **Check logs**: Run `tail -f ~/.claude-notify/log.txt` to see detailed information about window detection and focusing attempts.
+1. **Notifications not appearing**: Check the logs at `~/.claude-notify/log.txt`
+2. **Sound not playing**: The tool uses system sounds (Glass on macOS, beep on Linux/Windows)
+3. **Hook not triggering**: Verify the hook is properly configured in your Claude Code settings
 
 ## API
 
-### `handleStopHook(input: HookInput, options?: { soundPath?: string })`
+### `handleStopHook(input: HookInput)`
 
 Main function that processes the Claude Code stop hook data.
 
 - `input`: The hook input data from Claude Code containing session ID and transcript path
-- `options.soundPath`: Optional path to a custom sound file
 
 ### `parseTranscript(transcriptPath: string): TranscriptEntry[]`
 

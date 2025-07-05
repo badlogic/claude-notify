@@ -25,7 +25,7 @@ Usage:
 When used as a hook, claude-notify displays:
   - The current working directory
   - The last message from Claude
-  - Plays a notification sound`)
+  - Plays a notification sound (Glass on macOS, system beep on other platforms)`)
     process.exit(0)
   }
 
