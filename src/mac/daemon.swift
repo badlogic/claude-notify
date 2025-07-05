@@ -67,6 +67,11 @@ class SessionManager: ObservableObject {
             logger?.log("Created new session: \(hookMessage.sessionId) with pid: \(hookMessage.pid)")
         }
 
+        sortSessions()
+        logger?.log("Total sessions: \(sessions.count)")
+    }
+
+    private func sortSessions() {
         // Sort sessions: idle first, then working, then exited, newest first within each group
         sessions.sort { 
             if $0.status == $1.status {
@@ -75,7 +80,6 @@ class SessionManager: ObservableObject {
             let order: [SessionInfo.SessionStatus: Int] = [.idle: 0, .working: 1, .exited: 2]
             return order[$0.status]! < order[$1.status]!
         }
-        logger?.log("Total sessions: \(sessions.count)")
     }
 
     private func determineStatus(from hookType: String) -> SessionInfo.SessionStatus {
@@ -97,6 +101,7 @@ class SessionManager: ObservableObject {
         lock.lock()
         defer { lock.unlock() }
 
+        var hasChanges = false
         for index in sessions.indices {
             // Check if process is still alive
             let result = kill(sessions[index].pid, 0)
@@ -104,12 +109,26 @@ class SessionManager: ObservableObject {
             if isDead && sessions[index].status != .exited {
                 logger?.log("Marking session as exited: \(sessions[index].id) with pid: \(sessions[index].pid)")
                 sessions[index].status = .exited
+                hasChanges = true
             }
+        }
+        
+        // Resort sessions if any were marked as exited
+        if hasChanges {
+            sortSessions()
         }
     }
 
     var waitingSessionCount: Int {
         sessions.filter { $0.status == .idle }.count
+    }
+    
+    func removeExitedSessions() {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        sessions.removeAll { $0.status == .exited }
+        sortSessions()
     }
 
     deinit {
@@ -355,7 +374,7 @@ struct ControlCenterView: View {
                     .font(.headline)
                 Spacer()
                 Button("Clear Exited") {
-                    sessionManager.sessions.removeAll { $0.status == .exited }
+                    sessionManager.removeExitedSessions()
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
@@ -577,7 +596,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func clearExited() {
-        sessionManager.sessions.removeAll { $0.status == .exited }
+        sessionManager.removeExitedSessions()
     }
 
     @objc func quit() {

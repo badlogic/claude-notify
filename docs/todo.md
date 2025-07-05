@@ -52,5 +52,13 @@
 
 ### Open
 - [ ] When we detect a session has exited, we need to immediately resort the session list
+  **WHAT**: When the daemon detects a session has exited (process no longer exists), the session list should immediately resort to move the exited session to the bottom of the list. The resort should happen as soon as the session status is changed to `.exited` in the `removeDeadSessions()` method. The sorting order should remain the same: idle sessions first, working sessions second, exited sessions last (newest first within each group). The UI should update immediately to reflect the new order without waiting for new hook messages.
+  
+  **HOW**:
+  - [x] Extract the sorting logic from `updateSession()` (lines 71-77) into a new private method `sortSessions()` in SessionManager in src/mac/daemon.swift
+  - [x] Call `sortSessions()` in `removeDeadSessions()` after marking sessions as exited (after line 107) in src/mac/daemon.swift
+  - [x] Add a thread-safe `removeExitedSessions()` method in SessionManager that uses the lock and calls `sortSessions()` in src/mac/daemon.swift
+  - [x] Update the "Clear Exited" button action (line 358) to call the new `removeExitedSessions()` method instead of directly modifying sessions in src/mac/daemon.swift
+  - [x] Update the clearExited() method (line 580) to use the new thread-safe method in src/mac/daemon.swift
 - [ ] We should track when we started monitoring a session and display for how long it has been running already
 - [ ] We should be able to say "do not display notifications for this session" in the control window
