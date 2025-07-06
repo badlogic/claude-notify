@@ -69,6 +69,11 @@ On Linux/Windows, claude-notify:
 }
 
 async function main() {
+  // Early exit if CLAUDE_NOTIFY_OFF is set
+  if (process.env.CLAUDE_NOTIFY_OFF) {
+    process.exit(0)
+  }
+
   const args = process.argv.slice(2)
 
   // Process args if any. Exits process if args are processed.
