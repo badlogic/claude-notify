@@ -1,4 +1,3 @@
-- [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] we also want to display something instead of no message when a session is in the working state
 - [ ] Make daemon testable
     - special CLI flag in daemon so it can run next to existing daemon with its own socket and own daemon-test.log file
