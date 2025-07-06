@@ -5,3 +5,4 @@
     - Special commands to open/close control window via socket?
     - snap-happy to take screenshots? better way to test UI?
 - [ ] If the control window has focus, pressing escape should close it
+- [ ] Need to add an icon which we can use for system notifications (if available on the platform)
