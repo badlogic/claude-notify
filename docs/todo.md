@@ -35,6 +35,14 @@
   - [x] Test: Verify current period only shows when actively working
   - [x] Test: Verify durations update in real-time
   (https://github.com/badlogic/claude-notify/commit/a7cab3a6e3b47e690848ee93b6f19b4e1012f06b)
+- [x] Process id has a dot in it in row
+  **WHAT**: The process ID in the control window's session list is being displayed with unwanted formatting (e.g., "PID: 12.34" instead of "PID: 1234"). The PID should be displayed as a plain integer without any thousand separators or decimal points.
+
+  **HOW**:
+  - [x] Fix PID display formatting in SessionRow at src/mac/daemon.swift:489 by changing `Text("PID: \(session.pid)")` to `Text("PID: \(String(session.pid))")`
+  - [x] Build daemon with `npm run build:daemon` and ensure no compilation errors
+  - [x] Test: Verify PID displays as plain number without dots (e.g., "PID: 12345" not "PID: 12.345")
+  (https://github.com/badlogic/claude-notify/commit/37618cce6e0c1e12c96b2dc3c58d08e52c913cb8)
 - [x] When we detect a session has exited, we need to immediately resort the session list
   **WHAT**: When the daemon detects a session has exited (process no longer exists), the session list should immediately resort to move the exited session to the bottom of the list. The resort should happen as soon as the session status is changed to `.exited` in the `removeDeadSessions()` method. The sorting order should remain the same: idle sessions first, working sessions second, exited sessions last (newest first within each group). The UI should update immediately to reflect the new order without waiting for new hook messages.
 
@@ -97,17 +105,14 @@
     (https://github.com/badlogic/claude-notify/commit/e8dcca2cbf889a7496ad8dd861f892f1f6bf4247)
 
 ### Open
-- [ ] Process id has a dot in it in row
-  **WHAT**: The process ID in the control window's session list is being displayed with unwanted formatting (e.g., "PID: 12.34" instead of "PID: 1234"). The PID should be displayed as a plain integer without any thousand separators or decimal points.
-
-  **HOW**:
-  - [x] Fix PID display formatting in SessionRow at src/mac/daemon.swift:489 by changing `Text("PID: \(session.pid)")` to `Text("PID: \(String(session.pid))")`
-  - [ ] Build daemon with `npm run build:daemon` and ensure no compilation errors
-  - [ ] Test: Verify PID displays as plain number without dots (e.g., "PID: 12345" not "PID: 12.345")
-- [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] We should be able to say "do not display notifications for this session" in the control window
+- [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] If a special env var is present (.e.g CLAUDE_NOTIFY_OFF), do not process hooks in cli.ts.
 - [ ] tray icon should really just be a bold CC or CC(<num-waiting>)
 - [ ] we also want to display something instead of no message when a session is in the working state
 - [ ] Make daemon testable
-    - special CLI flag in dae
+    - special CLI flag in daemon so it can run next to existing daemon with its own socket and own daemon-test.log file
+    - tests can write to test socket in ~/.claude-notify/
+    - Unsure if there's a better idea?
+    - Special commands to open/close control window via socket?
+    - snap-happy to take screenshots? better way to test UI?
