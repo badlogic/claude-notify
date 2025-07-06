@@ -18,7 +18,7 @@ export interface TranscriptEntry {
 
 export interface TranscriptInfo {
   cwd: string
-  lastMessage: string
+  message: string
   sessionId: string
 }
 
@@ -59,11 +59,44 @@ function getCurrentWorkingDirectory(entries: TranscriptEntry[]): string | null {
   return null
 }
 
-export function getTranscriptInfo(transcriptPath: string): TranscriptInfo {
+export function getTranscriptInfo(
+  transcriptPath: string,
+  hookType?: string,
+  hookData?: Record<string, unknown>,
+): TranscriptInfo {
   const entries = parseTranscript(transcriptPath)
+
+  let message = 'No message'
+
+  // Generate contextual messages for PreToolUse and PostToolUse hooks
+  if (hookType === 'PreToolUse' && hookData?.tool_name) {
+    const toolName = hookData.tool_name as string
+    const toolInput = hookData.tool_input || {}
+    const inputStr = JSON.stringify(toolInput)
+    message = `${toolName}: ${inputStr}`
+  } else if (hookType === 'PostToolUse' && hookData?.tool_name) {
+    const toolName = hookData.tool_name as string
+    const toolInput = hookData.tool_input || {}
+    const inputStr = JSON.stringify(toolInput)
+    const toolResponse = hookData.tool_response as Record<string, unknown> | undefined
+    const success =
+      toolResponse?.success !== undefined
+        ? toolResponse.success
+          ? 'success'
+          : 'failure'
+        : 'completed'
+    message = `${toolName}: ${inputStr} - ${success}`
+  } else if (hookType === 'Notification' && hookData?.message) {
+    // Use the notification message if available
+    message = hookData.message as string
+  } else {
+    // Fall back to transcript parsing for other hooks
+    message = getLastAssistantMessage(entries) || 'No message'
+  }
+
   return {
     cwd: getCurrentWorkingDirectory(entries) || process.cwd(),
-    lastMessage: getLastAssistantMessage(entries) || 'No message',
+    message,
     sessionId: entries[entries.length - 1].sessionId,
   }
 }

@@ -8,6 +8,11 @@ export interface HookInput {
   session_id: string
   transcript_path: string
   stop_hook_active?: boolean
+  tool_name?: string
+  tool_input?: Record<string, unknown>
+  tool_response?: Record<string, unknown>
+  message?: string
+  title?: string
 }
 
 async function processArgs(args: string[]): Promise<void> {
@@ -27,7 +32,7 @@ async function processArgs(args: string[]): Promise<void> {
 
     await sendNotification('Notification', {
       cwd: process.cwd(),
-      lastMessage:
+      message:
         'This is a test notification.\n\nYou should see a notification in the top right corner of your screen.',
       sessionId: 'test-session',
     })
@@ -108,7 +113,14 @@ async function main() {
     }
 
     const hookData: HookInput = JSON.parse(input)
-    await sendNotification(hookType, getTranscriptInfo(hookData.transcript_path))
+    await sendNotification(
+      hookType,
+      getTranscriptInfo(
+        hookData.transcript_path,
+        hookType,
+        hookData as unknown as Record<string, unknown>,
+      ),
+    )
     process.exit(0)
   } catch (error) {
     console.error('Error:', error)

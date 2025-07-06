@@ -12,7 +12,7 @@ struct SessionInfo: Codable, Identifiable {
     let id: String // session_id
     let pid: Int32
     let cwd: String
-    var lastMessage: String
+    var message: String
     var status: SessionStatus
     let timestamp: Date
     let startTimestamp: Date
@@ -70,7 +70,7 @@ class SessionManager: ObservableObject {
                 sessions[index].currentWorkingStartTimestamp = Date()
             }
             
-            sessions[index].lastMessage = hookMessage.message
+            sessions[index].message = hookMessage.message
             sessions[index].status = newStatus
             logger?.log("Updated existing session: \(hookMessage.sessionId)")
         } else {
@@ -80,7 +80,7 @@ class SessionManager: ObservableObject {
                 id: hookMessage.sessionId,
                 pid: hookMessage.pid,
                 cwd: hookMessage.cwd,
-                lastMessage: hookMessage.message,
+                message: hookMessage.message,
                 status: status,
                 timestamp: Date(timeIntervalSince1970: Double(hookMessage.timestamp) / 1000.0),
                 startTimestamp: Date(),
@@ -331,7 +331,7 @@ class UnixSocketServer {
         let content = UNMutableNotificationContent()
         content.title = "Claude Code"
         content.subtitle = hookMessage.cwd.replacingOccurrences(of: NSHomeDirectory(), with: "~")
-        content.body = String(hookMessage.message.prefix(200))
+        content.body = hookMessage.message.count > 200 ? String(hookMessage.message.prefix(197)) + "..." : hookMessage.message
         content.sound = .default
 
         let request = UNNotificationRequest(
@@ -539,11 +539,12 @@ struct SessionRow: View {
                 }
             }
 
-            Text(session.lastMessage)
+            Text(session.message)
                 .font(.system(size: 11))
-                .lineLimit(5)
+                .lineLimit(nil)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))

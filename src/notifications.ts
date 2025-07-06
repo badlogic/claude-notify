@@ -20,7 +20,7 @@ export async function sendNotification(
       sessionId: transcriptInfo.sessionId,
       pid: process.ppid || process.pid,
       cwd: transcriptInfo.cwd,
-      message: transcriptInfo.lastMessage,
+      message: transcriptInfo.message,
       timestamp: Date.now(),
     }
 
@@ -35,7 +35,7 @@ export async function sendNotification(
           notifier.notify(
             {
               title: 'Claude Code',
-              message: `${displayCwd}\n\n${transcriptInfo.lastMessage}`,
+              message: `${displayCwd}\n\n${transcriptInfo.message.length > 200 ? `${transcriptInfo.message.substring(0, 197)}...` : transcriptInfo.message}`,
               sound: false,
               wait: true,
             },

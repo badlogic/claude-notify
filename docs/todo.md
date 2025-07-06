@@ -1,7 +1,7 @@
-- [ ] we also want to display something instead of no message when a session is in the working state
 - [ ] Make daemon testable
     - special CLI flag in daemon so it can run next to existing daemon with its own socket and own daemon-test.log file
     - tests can write to test socket in ~/.claude-notify/
     - Unsure if there's a better idea?
     - Special commands to open/close control window via socket?
     - snap-happy to take screenshots? better way to test UI?
+- [ ] If the control window has focus, pressing escape should close it

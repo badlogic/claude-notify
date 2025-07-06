@@ -4,6 +4,7 @@ A cross-platform notification system for Claude Code that provides real-time sta
 
 ## Features
 - System notifications when Claude stops or needs input
+- Real-time working state display showing current tool usage (e.g., "Bash: {command...}")
 - macOS: Menu bar icon with session tracking and control center
 - Linux/Windows: Desktop notifications with sound alerts
 - Multi-session support with individual mute controls
@@ -34,7 +35,7 @@ src/cli.ts              # CLI entry point (receives hook events)
 src/notifications.ts    # Core notification logic
 src/mac/daemon.swift    # macOS menu bar daemon (maintains state)
 src/daemon-client.ts    # Unix socket client (communicates with daemon)
-src/transcript.ts       # Claude transcript parsing
+src/transcript.ts       # Hook data processing and message generation
 src/settings.ts         # Hook configuration
 
 ## Notes
