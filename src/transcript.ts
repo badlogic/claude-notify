@@ -88,7 +88,7 @@ export function getTranscriptInfo(
     message = `${toolName}: ${inputStr} - ${success}`
   } else if (hookType === 'Notification' && hookData?.message) {
     // Use the notification message if available
-    message = hookData.message as string
+    message = getLastAssistantMessage(entries) || 'No message'
   } else {
     // Fall back to transcript parsing for other hooks
     message = getLastAssistantMessage(entries) || 'No message'
