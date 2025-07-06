@@ -486,7 +486,7 @@ struct SessionRow: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("PID: \(session.pid)")
+                Text("PID: \(String(session.pid))")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
