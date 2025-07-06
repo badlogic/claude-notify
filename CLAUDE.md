@@ -1,4 +1,2 @@
 - *CRITICAL* ALWAYS USE `rg` instead of `grep` via the Bash tool
 - NEVER commit and push without the user instructing you directly to do so
-- If you make changes to .ts code, run npm run check and fix all issues
-- If you make changes to .swift code, run scripts/build-daemon.sh debug and fix all issues

@@ -459,6 +459,12 @@ struct ControlCenterView: View {
         .onReceive(timer) { _ in
             currentTime = Date()
         }
+        .focusable()
+        .onExitCommand {
+            if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                appDelegate.closeControlWindow()
+            }
+        }
     }
 }
 
@@ -658,6 +664,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 y: buttonFrame.minY - 5
             ))
         }
+        
+        // Make the app active and window key
+        NSApp.activate(ignoringOtherApps: true)
         controlWindow?.makeKeyAndOrderFront(nil)
 
         // Close on click outside
@@ -675,7 +684,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
-    private func closeControlWindow() {
+    func closeControlWindow() {
         // Remove notification observer
         NotificationCenter.default.removeObserver(
             self,
