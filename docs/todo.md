@@ -5,7 +5,3 @@
     - Unsure if there's a better idea?
     - Special commands to open/close control window via socket?
     - snap-happy to take screenshots? better way to test UI?
-- [ ] Improve .claude/commands/todo.md
-    - todo.md -> only open items, done.md -> finished items, append only, inprogress.md -> in-progress items
-    - Improve markdown format of refined todos, look terrible atm, should be nicely formatted nested lists with checkboxes where needed
-    - prevent concurrent writes
