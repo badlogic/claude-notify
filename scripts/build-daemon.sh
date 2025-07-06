@@ -109,9 +109,15 @@ function build_and_sign() {
 case "$1" in
     "debug")
         build_and_sign "debug" "$DEVELOPMENT_CERT" "src/mac/daemon-debug.entitlements"
+        # Kill the daemon after successful build so it restarts with new code
+        log_info "Killing existing daemon to reload changes..."
+        pkill -f ClaudeNotifyDaemon || true
         ;;
     "release")
         build_and_sign "release" "$DISTRIBUTION_CERT" "src/mac/daemon-release.entitlements"
+        # Kill the daemon after successful build so it restarts with new code
+        log_info "Killing existing daemon to reload changes..."
+        pkill -f ClaudeNotifyDaemon || true
         ;;
     *)
         echo "Usage: $0 [debug|release]"

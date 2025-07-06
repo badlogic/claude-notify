@@ -599,7 +599,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "message.fill", accessibilityDescription: "Claude Notify")
+            // Set initial bold "CC" text
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
+            ]
+            button.attributedTitle = NSAttributedString(string: "CC", attributes: attributes)
             button.action = #selector(toggleControlCenter)
             button.target = self
         }
@@ -609,11 +613,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let count = sessionManager.waitingSessionCount
 
         if let button = statusItem?.button {
-            if count > 0 {
-                button.title = " \(count)"
-            } else {
-                button.title = ""
-            }
+            let text = count > 0 ? "CC(\(count))" : "CC"
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
+            ]
+            button.attributedTitle = NSAttributedString(string: text, attributes: attributes)
         }
     }
 

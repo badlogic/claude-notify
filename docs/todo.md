@@ -136,6 +136,29 @@
 - [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] If a special env var is present (.e.g CLAUDE_NOTIFY_OFF), do not process hooks in cli.ts.
 - [ ] tray icon should really just be a bold CC or CC(<num-waiting>)
+  **WHAT**: Replace the current bell icon in the macOS menu bar with bold text that shows:
+  - "CC" when no sessions are waiting for input
+  - "CC(3)" when 3 sessions are waiting (dynamic count)
+  - Text should be bold and use the system's default menu bar text color
+  - Remove the bell icon completely
+  - No hover or tooltip functionality
+
+  **HOW**:
+  - [x] Remove the bell icon in `setupMenuBar()` at src/mac/daemon.swift:602
+    - [x] Delete the line: `button.image = NSImage(systemSymbolName: "message.fill", accessibilityDescription: "Claude Notify")`
+  - [x] Add initial bold "CC" text in `setupMenuBar()` at src/mac/daemon.swift:602-603
+    - [x] Create NSAttributedString with bold system font
+    - [x] Set `button.attributedTitle` to display "CC"
+  - [x] Update `updateBadge()` method at src/mac/daemon.swift:608-618 to show bold text
+    - [x] Replace `button.title` with `button.attributedTitle`
+    - [x] Use NSAttributedString with bold font
+    - [x] Display "CC" when count is 0
+    - [x] Display "CC(\(count))" when count > 0
+  - [x] Build daemon with `npm run build:daemon` (will auto-kill existing daemon)
+  - [ ] Test: Verify "CC" shows in menu bar when no sessions are waiting
+  - [ ] Test: Verify "CC(3)" shows when 3 sessions are waiting
+  - [ ] Test: Verify text is bold and readable
+  - [ ] Test: Verify clicking still opens control window
 - [ ] we also want to display something instead of no message when a session is in the working state
 - [ ] Make daemon testable
     - special CLI flag in daemon so it can run next to existing daemon with its own socket and own daemon-test.log file
@@ -143,3 +166,7 @@
     - Unsure if there's a better idea?
     - Special commands to open/close control window via socket?
     - snap-happy to take screenshots? better way to test UI?
+- [ ] Improve .claude/commands/todo.md
+    - todo.md -> only open items, done.md -> finished items, append only, inprogress.md -> in-progress items
+    - Improve markdown format of refined todos, look terrible atm, should be nicely formatted nested lists with checkboxes where needed
+    - prevent concurrent writes
