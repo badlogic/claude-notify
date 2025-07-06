@@ -1,4 +1,29 @@
 ### Completed
+- [x] tray icon should really just be a bold CC or CC(<num-waiting>)
+  **WHAT**: Replace the current bell icon in the macOS menu bar with bold text that shows:
+  - "CC" when no sessions are waiting for input
+  - "CC(3)" when 3 sessions are waiting (dynamic count)
+  - Text should be bold and use the system's default menu bar text color
+  - Remove the bell icon completely
+  - No hover or tooltip functionality
+
+  **HOW**:
+  - [x] Remove the bell icon in `setupMenuBar()` at src/mac/daemon.swift:602
+    - [x] Delete the line: `button.image = NSImage(systemSymbolName: "message.fill", accessibilityDescription: "Claude Notify")`
+  - [x] Add initial bold "CC" text in `setupMenuBar()` at src/mac/daemon.swift:602-603
+    - [x] Create NSAttributedString with bold system font
+    - [x] Set `button.attributedTitle` to display "CC"
+  - [x] Update `updateBadge()` method at src/mac/daemon.swift:608-618 to show bold text
+    - [x] Replace `button.title` with `button.attributedTitle`
+    - [x] Use NSAttributedString with bold font
+    - [x] Display "CC" when count is 0
+    - [x] Display "CC(\(count))" when count > 0
+  - [x] Build daemon with `npm run build:daemon` (will auto-kill existing daemon)
+  - [x] Test: Verify "CC" shows in menu bar when no sessions are waiting
+  - [x] Test: Verify "CC(3)" shows when 3 sessions are waiting
+  - [x] Test: Verify text is bold and readable
+  - [x] Test: Verify clicking still opens control window
+  (https://github.com/badlogic/claude-notify/commit/f9a876ae7a460e6f6d910a236cb68f126301b495)
 - [x] We should track when we started monitoring a session and display for how long it has been running already
   **WHAT**: Track and display three durations in the control window's session list:
   1. Total session duration: Time since the session was first detected (format: "2h 15m" or "45m")
@@ -135,30 +160,6 @@
 ### Open
 - [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] If a special env var is present (.e.g CLAUDE_NOTIFY_OFF), do not process hooks in cli.ts.
-- [ ] tray icon should really just be a bold CC or CC(<num-waiting>)
-  **WHAT**: Replace the current bell icon in the macOS menu bar with bold text that shows:
-  - "CC" when no sessions are waiting for input
-  - "CC(3)" when 3 sessions are waiting (dynamic count)
-  - Text should be bold and use the system's default menu bar text color
-  - Remove the bell icon completely
-  - No hover or tooltip functionality
-
-  **HOW**:
-  - [x] Remove the bell icon in `setupMenuBar()` at src/mac/daemon.swift:602
-    - [x] Delete the line: `button.image = NSImage(systemSymbolName: "message.fill", accessibilityDescription: "Claude Notify")`
-  - [x] Add initial bold "CC" text in `setupMenuBar()` at src/mac/daemon.swift:602-603
-    - [x] Create NSAttributedString with bold system font
-    - [x] Set `button.attributedTitle` to display "CC"
-  - [x] Update `updateBadge()` method at src/mac/daemon.swift:608-618 to show bold text
-    - [x] Replace `button.title` with `button.attributedTitle`
-    - [x] Use NSAttributedString with bold font
-    - [x] Display "CC" when count is 0
-    - [x] Display "CC(\(count))" when count > 0
-  - [x] Build daemon with `npm run build:daemon` (will auto-kill existing daemon)
-  - [ ] Test: Verify "CC" shows in menu bar when no sessions are waiting
-  - [ ] Test: Verify "CC(3)" shows when 3 sessions are waiting
-  - [ ] Test: Verify text is bold and readable
-  - [ ] Test: Verify clicking still opens control window
 - [ ] we also want to display something instead of no message when a session is in the working state
 - [ ] Make daemon testable
     - special CLI flag in daemon so it can run next to existing daemon with its own socket and own daemon-test.log file
