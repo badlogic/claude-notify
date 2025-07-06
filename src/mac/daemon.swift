@@ -18,6 +18,7 @@ struct SessionInfo: Codable, Identifiable {
     let startTimestamp: Date
     var totalWorkingTime: TimeInterval
     var currentWorkingStartTimestamp: Date?
+    var muted: Bool = false
 
     enum SessionStatus: String, Codable {
         case working = "working"
@@ -84,7 +85,8 @@ class SessionManager: ObservableObject {
                 timestamp: Date(timeIntervalSince1970: Double(hookMessage.timestamp) / 1000.0),
                 startTimestamp: Date(),
                 totalWorkingTime: 0,
-                currentWorkingStartTimestamp: status == .working ? Date() : nil
+                currentWorkingStartTimestamp: status == .working ? Date() : nil,
+                muted: false
             )
             sessions.append(session)
             logger?.log("Created new session: \(hookMessage.sessionId) with pid: \(hookMessage.pid)")
@@ -143,7 +145,7 @@ class SessionManager: ObservableObject {
     }
 
     var waitingSessionCount: Int {
-        sessions.filter { $0.status == .idle }.count
+        sessions.filter { $0.status == .idle && !$0.muted }.count
     }
     
     func removeExitedSessions() {
@@ -152,6 +154,16 @@ class SessionManager: ObservableObject {
         
         sessions.removeAll { $0.status == .exited }
         sortSessions()
+    }
+    
+    func toggleMute(sessionId: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        if let index = sessions.firstIndex(where: { $0.id == sessionId }) {
+            sessions[index].muted.toggle()
+            logger?.log("Toggled mute for session \(sessionId): muted=\(sessions[index].muted)")
+        }
     }
 
     deinit {
@@ -302,9 +314,12 @@ class UnixSocketServer {
             DispatchQueue.main.async {
                 self.sessionManager.updateSession(from: hookMessage)
 
-                // Show notification for idle status
+                // Show notification for idle status (unless muted)
                 if hookMessage.hookType == "Stop" || hookMessage.hookType == "Notification" {
-                    self.showNotification(for: hookMessage)
+                    if let session = self.sessionManager.sessions.first(where: { $0.id == hookMessage.sessionId }), 
+                       !session.muted {
+                        self.showNotification(for: hookMessage)
+                    }
                 }
             }
         } catch {
@@ -431,7 +446,7 @@ struct ControlCenterView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(sessionManager.sessions) { session in
-                            SessionRow(session: session, currentTime: currentTime)
+                            SessionRow(session: session, currentTime: currentTime, sessionManager: sessionManager)
                             Divider()
                         }
                     }
@@ -450,6 +465,7 @@ struct ControlCenterView: View {
 struct SessionRow: View {
     let session: SessionInfo
     let currentTime: Date
+    let sessionManager: SessionManager
 
     var statusIcon: String {
         switch session.status {
@@ -489,6 +505,19 @@ struct SessionRow: View {
                 Text("PID: \(String(session.pid))")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                
+                Button(action: {
+                    sessionManager.toggleMute(sessionId: session.id)
+                }) {
+                    Text(session.muted ? "Muted" : "Mute")
+                        .font(.caption)
+                        .foregroundColor(session.muted ? .white : .secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(session.muted ? Color.red.opacity(0.8) : Color.clear)
+                        .cornerRadius(4)
+                }
+                .buttonStyle(.plain)
             }
             
             // Duration display
@@ -518,7 +547,7 @@ struct SessionRow: View {
         }
         .padding()
         .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .opacity(session.status == .exited ? 0.6 : 1.0)
+        .opacity(session.status == .exited ? 0.6 : (session.muted ? 0.7 : 1.0))
     }
 }
 

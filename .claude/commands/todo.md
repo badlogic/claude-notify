@@ -90,3 +90,4 @@ You MUST follow these steps exactly:
         (replace the exact TODO string with empty string)
       * Use Edit tool to insert the FULL completed TODO at line 2:
         `- [x] [full TODO content including WHAT and HOW with all boxes checked] ([commit URL])`
+      * Commit and push docs/todo.md update

@@ -106,6 +106,32 @@
 
 ### Open
 - [ ] We should be able to say "do not display notifications for this session" in the control window
+  **WHAT**: Add a toggle button to each session row in the control window that allows users to mute/unmute notifications for that specific session. When muted:
+  - No system notifications will be shown for that session
+  - No notification sounds will play for that session
+  - The session will not count towards the tray icon's waiting count
+  - The session remains visible in the control window with a badge-style button that shows "Muted" (when muted) or "Mute" (when unmuted)
+  - Muted sessions have reduced opacity (0.7) for visual distinction
+  - The mute state is temporary and does not persist across daemon restarts
+  - Users can toggle the mute state at any time
+
+  **HOW**:
+  - [x] Add `var muted: Bool = false` property to SessionInfo struct at src/mac/daemon.swift:20
+  - [x] Update notification logic in `showNotification()` at src/mac/daemon.swift:315 to check if session is muted before showing
+  - [x] Update `waitingSessionCount` computed property at src/mac/daemon.swift:145 to exclude muted sessions
+  - [x] Add mute toggle button to SessionRow at src/mac/daemon.swift:491 after PID display:
+    - [x] Style "Mute" as plain text button with `.buttonStyle(.plain)` and `.font(.caption)`
+    - [x] Style "Muted" with filled background using `.background(Color.red.opacity(0.2))` and `.cornerRadius(4)`
+    - [x] Use red foreground color for "Muted" state
+  - [x] Add `toggleMute(sessionId:)` method to SessionManager to handle mute state changes
+  - [x] Update session opacity in SessionRow to 0.7 when muted at src/mac/daemon.swift:521
+  - [x] Prevent notification sound in TypeScript side by checking mute state before calling playSound() in src/notifications.ts
+    - [x] Not needed for macOS - sound is handled by system notification in daemon
+  - [x] Build daemon with `npm run build:daemon`
+  - [x] Test: Verify mute button toggles between "Mute" and "Muted" states with distinct styling
+  - [x] Test: Verify muted sessions don't show notifications or play sounds
+  - [x] Test: Verify muted sessions don't count in tray icon badge
+  - [x] Test: Verify muted sessions have reduced opacity
 - [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] If a special env var is present (.e.g CLAUDE_NOTIFY_OFF), do not process hooks in cli.ts.
 - [ ] tray icon should really just be a bold CC or CC(<num-waiting>)
