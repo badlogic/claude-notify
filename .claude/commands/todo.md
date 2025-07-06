@@ -4,9 +4,8 @@ Read README.md in full to get an understanding of the project.
 
 You MUST follow these steps exactly:
 
-0. Check if `docs/todo.md` exists:
-    - Use LS tool to check if file exists
-    - If not, create it with Write tool using template:
+0. Read README.md and docs/todo.md in parallel in full
+    - if docs/todo.md does not exist, create it with Write tool using template:
       ```
       ### Completed
 
@@ -63,6 +62,9 @@ You MUST follow these steps exactly:
     - As you complete each HOW item:
       * Use Edit tool to check off the corresponding checkbox in docs/todo.md
       * Change `- [ ]` to `- [x]` for completed steps
+    - **IMPORTANT**: If implementation deviates from the TODO item or new subtasks arise:
+      * Add new checkboxes to the TODO item immediately
+      * Track all work done, even if not in original TODO item
     - Feel free to explore other files and create new ones as needed
     - After modifying files, run appropriate checks:
       * TypeScript: `npm run check`

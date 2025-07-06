@@ -63,4 +63,39 @@
 ### Open
 - [ ] Improve README.md, no need to manual setup, description of what it does is also lacking and not punchy and concise
 - [ ] We should track when we started monitoring a session and display for how long it has been running already
+  **WHAT**: Track and display three durations in the control window's session list:
+  1. Total session duration: Time since the session was first detected (format: "2h 15m" or "45m")
+  2. Total working time: Accumulated time across all working periods (format: "2h 15m" or "45m") 
+  3. Current working period: Time in current working state if actively working (format: "2h 15m" or "45m")
+
+  The durations should be displayed in the session list, update in real-time, and do not need to persist across app restarts. No special behavior for long-running sessions.
+
+  **HOW**:
+  - [x] Add properties to SessionInfo struct in src/mac/daemon.swift:10-23:
+    - [x] `startTimestamp: Date` - when session was first detected
+    - [x] `totalWorkingTime: TimeInterval` - accumulated working time across all periods
+    - [x] `currentWorkingStartTimestamp: Date?` - start of current working period (nil if not working)
+  - [x] Initialize `startTimestamp` with current date and `totalWorkingTime = 0` when creating new session in updateSession() at src/mac/daemon.swift:56-66
+  - [x] When status changes to working in updateSession() at src/mac/daemon.swift:69:
+    - [x] Set `currentWorkingStartTimestamp = Date()`
+  - [x] When status changes from working to idle/exited in updateSession() at src/mac/daemon.swift:69:
+    - [x] Add current period to total: `totalWorkingTime += Date().timeIntervalSince(currentWorkingStartTimestamp!)`
+    - [x] Clear `currentWorkingStartTimestamp = nil`
+  - [x] Create a `formatDuration(_ interval: TimeInterval) -> String` function in SessionRow to format durations like "2h 15m 30s" or "45m 10s" or "5s"
+  - [x] Add duration display to SessionRow view at src/mac/daemon.swift:422-461:
+    - [x] Add HStack with duration info below the working directory
+    - [x] Show total session time: `Date().timeIntervalSince(session.startTimestamp)`
+    - [x] Show total working time: `session.totalWorkingTime + (currentWorkingPeriod if active)`
+    - [x] Show current period (only if working): `Date().timeIntervalSince(session.currentWorkingStartTimestamp!)`
+  - [x] Add Timer to ControlCenterView that refreshes every second to update durations in real-time
+  - [x] Fix timer not triggering UI updates - add @Published refreshTrigger to SessionManager
+  - [x] Fix timer still not updating - use Timer.publish with Combine for proper UI updates
+  - [x] Debug why timer still not working - add logging and pass currentTime to rows for re-renders
+  - [x] Remove debug logging now that timer is working
+  - [x] Run `npm run build:daemon` and fix any compilation errors
+  - [x] Test: Verify all three durations display correctly
+  - [x] Test: Verify total working time accumulates across multiple working periods
+  - [x] Test: Verify current period only shows when actively working
+  - [x] Test: Verify durations update in real-time
 - [ ] We should be able to say "do not display notifications for this session" in the control window
+- [ ] If a special env var is present (.e.g CLAUDE_NOTIFY_OFF), do not process hooks in cli.ts.

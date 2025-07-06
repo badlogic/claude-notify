@@ -4,6 +4,7 @@ import Cocoa
 import Foundation
 import SwiftUI
 import UserNotifications
+import Combine
 
 // MARK: - Data Models
 
@@ -14,6 +15,9 @@ struct SessionInfo: Codable, Identifiable {
     var lastMessage: String
     var status: SessionStatus
     let timestamp: Date
+    let startTimestamp: Date
+    var totalWorkingTime: TimeInterval
+    var currentWorkingStartTimestamp: Date?
 
     enum SessionStatus: String, Codable {
         case working = "working"
@@ -50,18 +54,37 @@ class SessionManager: ObservableObject {
 
         if let index = sessions.firstIndex(where: { $0.id == hookMessage.sessionId }) {
             // Update existing session
+            let oldStatus = sessions[index].status
+            let newStatus = determineStatus(from: hookMessage.hookType)
+            
+            // Handle working time tracking
+            if oldStatus == .working && newStatus != .working {
+                // Transitioning from working to idle/exited
+                if let workingStart = sessions[index].currentWorkingStartTimestamp {
+                    sessions[index].totalWorkingTime += Date().timeIntervalSince(workingStart)
+                    sessions[index].currentWorkingStartTimestamp = nil
+                }
+            } else if oldStatus != .working && newStatus == .working {
+                // Transitioning to working
+                sessions[index].currentWorkingStartTimestamp = Date()
+            }
+            
             sessions[index].lastMessage = hookMessage.message
-            sessions[index].status = determineStatus(from: hookMessage.hookType)
+            sessions[index].status = newStatus
             logger?.log("Updated existing session: \(hookMessage.sessionId)")
         } else {
             // Create new session
+            let status = determineStatus(from: hookMessage.hookType)
             let session = SessionInfo(
                 id: hookMessage.sessionId,
                 pid: hookMessage.pid,
                 cwd: hookMessage.cwd,
                 lastMessage: hookMessage.message,
-                status: determineStatus(from: hookMessage.hookType),
-                timestamp: Date(timeIntervalSince1970: Double(hookMessage.timestamp) / 1000.0)
+                status: status,
+                timestamp: Date(timeIntervalSince1970: Double(hookMessage.timestamp) / 1000.0),
+                startTimestamp: Date(),
+                totalWorkingTime: 0,
+                currentWorkingStartTimestamp: status == .working ? Date() : nil
             )
             sessions.append(session)
             logger?.log("Created new session: \(hookMessage.sessionId) with pid: \(hookMessage.pid)")
@@ -365,6 +388,8 @@ class Logger {
 
 struct ControlCenterView: View {
     @ObservedObject var sessionManager: SessionManager
+    @State private var currentTime = Date()
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -406,7 +431,7 @@ struct ControlCenterView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(sessionManager.sessions) { session in
-                            SessionRow(session: session)
+                            SessionRow(session: session, currentTime: currentTime)
                             Divider()
                         }
                     }
@@ -416,11 +441,15 @@ struct ControlCenterView: View {
         .frame(width: 400)
         .frame(maxHeight: 600)
         .background(Color(NSColor.windowBackgroundColor))
+        .onReceive(timer) { _ in
+            currentTime = Date()
+        }
     }
 }
 
 struct SessionRow: View {
     let session: SessionInfo
+    let currentTime: Date
 
     var statusIcon: String {
         switch session.status {
@@ -432,6 +461,20 @@ struct SessionRow: View {
 
     var displayCwd: String {
         session.cwd.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+    }
+    
+    func formatDuration(_ interval: TimeInterval) -> String {
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        let seconds = Int(interval) % 60
+        
+        if hours > 0 {
+            return "\(hours)h \(minutes)m \(seconds)s"
+        } else if minutes > 0 {
+            return "\(minutes)m \(seconds)s"
+        } else {
+            return "\(seconds)s"
+        }
     }
 
     var body: some View {
@@ -446,6 +489,25 @@ struct SessionRow: View {
                 Text("PID: \(session.pid)")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+            }
+            
+            // Duration display
+            HStack(spacing: 12) {
+                Text("Session: \(formatDuration(Date().timeIntervalSince(session.startTimestamp)))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                
+                let totalWorking = session.totalWorkingTime + 
+                    (session.currentWorkingStartTimestamp != nil ? Date().timeIntervalSince(session.currentWorkingStartTimestamp!) : 0)
+                Text("Working: \(formatDuration(totalWorking))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                
+                if session.status == .working, let workingStart = session.currentWorkingStartTimestamp {
+                    Text("Current: \(formatDuration(Date().timeIntervalSince(workingStart)))")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
 
             Text(session.lastMessage)
