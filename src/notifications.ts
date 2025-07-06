@@ -10,8 +10,12 @@ export async function sendNotification(
   transcriptInfo: TranscriptInfo,
 ): Promise<void> {
   if (platform() === 'darwin') {
+    const messagePreview =
+      transcriptInfo.message.length > 100
+        ? `${transcriptInfo.message.substring(0, 100).replace(/\n/g, '\\n')}...`
+        : transcriptInfo.message.replace(/\n/g, '\\n')
     log(
-      `Hook ${hookType}: pid=${process.pid}, ppid=${process.ppid}, sessionId=${transcriptInfo.sessionId}`,
+      `Hook ${hookType}: pid=${process.pid}, ppid=${process.ppid}, sessionId=${transcriptInfo.sessionId}, message="${messagePreview}"`,
     )
 
     const daemonMessage: DaemonMessage = {

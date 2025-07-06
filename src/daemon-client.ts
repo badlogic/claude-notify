@@ -61,7 +61,6 @@ export class DaemonClient {
           console.error('Failed to send message:', err)
           process.exit(1)
         } else {
-          log('Message sent to daemon')
           resolve()
         }
       })
@@ -73,7 +72,6 @@ export class DaemonClient {
     const isDaemonRunning = await this.checkDaemonProcess()
 
     if (isDaemonRunning) {
-      log('Daemon is already running')
       return
     }
 
@@ -131,7 +129,6 @@ export class DaemonClient {
   private async connect(): Promise<void> {
     return new Promise((resolve) => {
       this.socket = createConnection(SOCKET_PATH, () => {
-        log('Connected to daemon')
         resolve()
       })
 
