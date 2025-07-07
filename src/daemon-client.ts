@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { type Socket, createConnection } from 'node:net'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -111,6 +111,15 @@ export class DaemonClient {
       log('Error:', error)
       console.error('Error:', error)
       process.exit(1)
+    }
+
+    // Clear the log.txt file when starting daemon
+    const logPath = join(homedir(), '.claude-notify', 'log.txt')
+    try {
+      writeFileSync(logPath, '')
+      log('Cleared log.txt')
+    } catch (err) {
+      log('Failed to clear log.txt:', err)
     }
 
     // Spawn daemon process

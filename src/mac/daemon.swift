@@ -401,6 +401,54 @@ class Logger {
 
 // MARK: - SwiftUI Views
 
+// Modifier to disable focus effect on macOS 14+
+struct FocusEffectModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 14.0, *) {
+            content.focusEffectDisabled(true)
+        } else {
+            content
+        }
+    }
+}
+
+// Custom colors and theme constants
+extension Color {
+    static let darkBackground = Color(red: 0.11, green: 0.11, blue: 0.118)  // Solid dark background
+    static let darkSurface = Color(red: 0.15, green: 0.15, blue: 0.16)
+    static let dividerColor = Color(white: 0.3, opacity: 0.3)
+    static let textPrimary = Color.white
+    static let textSecondary = Color(white: 0.7)
+    static let statusWorking = Color(red: 0.3, green: 0.85, blue: 0.4)
+    static let statusIdle = Color(red: 1.0, green: 0.6, blue: 0.2)
+    static let statusExited = Color(red: 0.9, green: 0.3, blue: 0.3)
+}
+
+// Custom status dot view
+struct StatusDotView: View {
+    let status: SessionInfo.SessionStatus
+    
+    var color: Color {
+        switch status {
+        case .working: return .statusWorking
+        case .idle: return .statusIdle
+        case .exited: return .statusExited
+        }
+    }
+    
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
+            .overlay(
+                Circle()
+                    .fill(color.opacity(0.3))
+                    .frame(width: 12, height: 12)
+                    .blur(radius: 2)
+            )
+    }
+}
+
 struct ControlCenterView: View {
     @ObservedObject var sessionManager: SessionManager
     @State private var currentTime = Date()
@@ -409,57 +457,104 @@ struct ControlCenterView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            HStack {
-                Text("Claude Code Sessions")
-                    .font(.headline)
-                Spacer()
-                Button("Clear Exited") {
-                    sessionManager.removeExitedSessions()
+            VStack(spacing: 12) {
+                HStack(alignment: .center) {
+                    Text("Active")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                    
+                    Text("(\(sessionManager.sessions.count))")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.textSecondary)
+                    
+                    Spacer()
                 }
-                .buttonStyle(.plain)
-                .font(.caption)
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
                 
-                Button("Shutdown") {
-                    if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-                        appDelegate.performSelector(onMainThread: #selector(AppDelegate.quit), with: nil, waitUntilDone: false)
-                    }
-                }
-                .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundColor(.red)
+                Rectangle()
+                    .fill(Color.dividerColor)
+                    .frame(height: 1)
             }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-
-            Divider()
 
             // Session list
             if sessionManager.sessions.isEmpty {
                 VStack {
                     Spacer()
                     Text("No active sessions")
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 14))
+                        .foregroundColor(.textSecondary)
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    VStack(spacing: 0) {
+                    VStack(spacing: 1) {
                         ForEach(sessionManager.sessions) { session in
                             SessionRow(session: session, currentTime: currentTime, sessionManager: sessionManager)
-                            Divider()
+                                .padding(.horizontal, 1)
+                            
+                            if session.id != sessionManager.sessions.last?.id {
+                                Rectangle()
+                                    .fill(Color.dividerColor)
+                                    .frame(height: 1)
+                                    .padding(.horizontal, 20)
+                            }
                         }
                     }
+                    .padding(.vertical, 1)
                 }
             }
+            
+            // Bottom toolbar
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(Color.dividerColor)
+                    .frame(height: 1)
+                
+                HStack(spacing: 16) {
+                    Button(action: {
+                        sessionManager.removeExitedSessions()
+                    }) {
+                        Text("Clear Exited")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.textPrimary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(Color.darkSurface)
+                            .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
+                            appDelegate.performSelector(onMainThread: #selector(AppDelegate.quit), with: nil, waitUntilDone: false)
+                        }
+                    }) {
+                        Text("Shutdown")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(Color.red.opacity(0.8))
+                            .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(16)
+            }
         }
-        .frame(width: 400)
+        .frame(width: 420)
         .frame(maxHeight: 600)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.darkBackground)
+        .cornerRadius(12)
         .onReceive(timer) { _ in
             currentTime = Date()
         }
         .focusable()
+        .modifier(FocusEffectModifier())
         .onExitCommand {
             if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
                 appDelegate.closeControlWindow()
@@ -473,16 +568,16 @@ struct SessionRow: View {
     let currentTime: Date
     let sessionManager: SessionManager
 
-    var statusIcon: String {
-        switch session.status {
-        case .idle: return "🟡"
-        case .working: return "🟢"
-        case .exited: return "🔴"
-        }
-    }
-
     var displayCwd: String {
         session.cwd.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+    }
+    
+    var statusText: String {
+        switch session.status {
+        case .idle: return "Idle"
+        case .working: return "Working"
+        case .exited: return "Exited"
+        }
     }
     
     func formatDuration(_ interval: TimeInterval) -> String {
@@ -491,7 +586,7 @@ struct SessionRow: View {
         let seconds = Int(interval) % 60
         
         if hours > 0 {
-            return "\(hours)h \(minutes)m \(seconds)s"
+            return "\(hours)h \(minutes)m"
         } else if minutes > 0 {
             return "\(minutes)m \(seconds)s"
         } else {
@@ -500,61 +595,73 @@ struct SessionRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(statusIcon)
-                    .font(.caption)
-                Text(displayCwd)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            // First row: Path and status info
+            HStack(spacing: 16) {
+                HStack(spacing: 8) {
+                    StatusDotView(status: session.status)
+                    
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textSecondary)
+                        
+                        Text(displayCwd)
+                            .font(.system(size: 12))
+                            .foregroundColor(.textSecondary)
+                    }
+                }
+                
                 Spacer()
-                Text("PID: \(String(session.pid))")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                
+                // Status and time info
+                HStack(spacing: 12) {
+                    if session.status == .working, let workingStart = session.currentWorkingStartTimestamp {
+                        Text("\(statusText) • \(formatDuration(Date().timeIntervalSince(workingStart)))")
+                            .font(.system(size: 11))
+                            .foregroundColor(.statusWorking)
+                    } else {
+                        Text(statusText)
+                            .font(.system(size: 11))
+                            .foregroundColor(session.status == .idle ? .statusIdle : .statusExited)
+                    }
+                    
+                    Text("PID \(session.pid)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textSecondary.opacity(0.7))
+                }
                 
                 Button(action: {
                     sessionManager.toggleMute(sessionId: session.id)
                 }) {
-                    Text(session.muted ? "Muted" : "Mute")
-                        .font(.caption)
-                        .foregroundColor(session.muted ? .white : .secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(session.muted ? Color.red.opacity(0.8) : Color.clear)
-                        .cornerRadius(4)
+                    Image(systemName: session.muted ? "bell.slash.fill" : "bell.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(session.muted ? .textSecondary : .textPrimary)
+                        .frame(width: 24, height: 24)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(session.muted ? Color.red.opacity(0.2) : Color.clear)
+                        )
                 }
                 .buttonStyle(.plain)
+                .help(session.muted ? "Unmute notifications" : "Mute notifications")
             }
             
-            // Duration display
-            HStack(spacing: 12) {
-                Text("Session: \(formatDuration(Date().timeIntervalSince(session.startTimestamp)))")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                
-                let totalWorking = session.totalWorkingTime + 
-                    (session.currentWorkingStartTimestamp != nil ? Date().timeIntervalSince(session.currentWorkingStartTimestamp!) : 0)
-                Text("Working: \(formatDuration(totalWorking))")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                
-                if session.status == .working, let workingStart = session.currentWorkingStartTimestamp {
-                    Text("Current: \(formatDuration(Date().timeIntervalSince(workingStart)))")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-
+            // Second row: Full message
             Text(session.message)
-                .font(.system(size: 11))
+                .font(.system(size: 12))
+                .foregroundColor(.textPrimary.opacity(0.9))
                 .lineLimit(nil)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .opacity(session.status == .exited ? 0.6 : (session.muted ? 0.7 : 1.0))
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(session.status == .exited ? Color.darkSurface.opacity(0.6) : Color.darkSurface)
+        )
+        .opacity(session.muted ? 0.7 : 1.0)
     }
 }
 
@@ -640,9 +747,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showControlCenter() {
         let contentView = ControlCenterView(sessionManager: sessionManager)
+            .cornerRadius(12)
+            .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
 
         controlWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 600),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -654,13 +763,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         controlWindow?.isMovableByWindowBackground = true
         controlWindow?.level = .floating
         controlWindow?.isReleasedWhenClosed = false
+        controlWindow?.backgroundColor = NSColor(red: 0.11, green: 0.11, blue: 0.118, alpha: 1.0)
+        controlWindow?.isOpaque = true
+        controlWindow?.hasShadow = true
+        controlWindow?.standardWindowButton(.closeButton)?.isHidden = true
+        controlWindow?.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        controlWindow?.standardWindowButton(.zoomButton)?.isHidden = true
 
         // Position below menu bar icon
         if let button = statusItem?.button,
            let buttonWindow = button.window {
             let buttonFrame = buttonWindow.convertToScreen(button.frame)
             controlWindow?.setFrameTopLeftPoint(NSPoint(
-                x: buttonFrame.midX - 200,
+                x: buttonFrame.midX - 210,
                 y: buttonFrame.minY - 5
             ))
         }
