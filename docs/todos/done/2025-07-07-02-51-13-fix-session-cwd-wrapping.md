@@ -1,6 +1,7 @@
 # Fix session cwd wrapping issue with time display
 
-**Status:** Refining
+**Status:** In Progress
+**Started:** 2025-07-07T02:52:30
 **Created:** 2025-07-07T02:51:13
 **Agent PID:** 27648
 
@@ -20,14 +21,17 @@ This gives the path full width to display without wrapping, improves readability
 Additionally, the PID is incorrectly formatted with locale-specific thousands separators (e.g., "10.324" instead of "10324") which needs to be fixed.
 
 ## Implementation Plan
-- [ ] Fix PID formatting issue (src/mac/daemon.swift:629)
-- [ ] Reorganize SessionRow layout to show path on first row (src/mac/daemon.swift:598-658)
-- [ ] Move status/time, PID, and mute button to second row (src/mac/daemon.swift:618-648)
-- [ ] Adjust VStack spacing for better visual hierarchy (src/mac/daemon.swift:598)
-- [ ] Automated test: Build the project with `npm run build`
-- [ ] User test: Open control window and verify PIDs display without thousands separators
-- [ ] User test: Check that long paths display on their own row without wrapping
-- [ ] User test: Verify status/time, PID, and mute button are on second row
-- [ ] User test: Ensure message text remains on third row with proper wrapping
+- [x] Fix PID formatting issue (src/mac/daemon.swift:629)
+- [x] Reorganize SessionRow layout to show path on first row (src/mac/daemon.swift:598-658)
+- [x] Move status/time, PID, and mute button to second row (src/mac/daemon.swift:618-648)
+- [x] Adjust VStack spacing for better visual hierarchy (src/mac/daemon.swift:598)
+- [x] Automated test: Build the project with `npm run build`
+- [x] User test: Open control window and verify PIDs display without thousands separators
+- [x] User test: Check that long paths display on their own row without wrapping
+- [x] User test: Verify status/time, PID, and mute button are on second row
+- [x] User test: Ensure message text remains on third row with proper wrapping
 
 ## Notes
+- Changed VStack spacing from 10 to 8 for tighter visual grouping
+- Added maxWidth: .infinity to the path Text view to ensure it takes full available width
+- The PID formatting was already fixed using String(session.pid) conversion

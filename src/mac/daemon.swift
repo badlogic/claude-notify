@@ -595,41 +595,41 @@ struct SessionRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // First row: Path and status info
-            HStack(spacing: 16) {
-                HStack(spacing: 8) {
-                    StatusDotView(status: session.status)
+        VStack(alignment: .leading, spacing: 8) {
+            // First row: Path only
+            HStack(spacing: 8) {
+                StatusDotView(status: session.status)
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textSecondary)
                     
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.textSecondary)
-                        
-                        Text(displayCwd)
-                            .font(.system(size: 12))
-                            .foregroundColor(.textSecondary)
-                    }
+                    Text(displayCwd)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+            }
+            
+            // Second row: Status/time, PID, and mute button
+            HStack(spacing: 12) {
+                // Status and time info
+                if session.status == .working, let workingStart = session.currentWorkingStartTimestamp {
+                    Text("\(statusText) • \(formatDuration(Date().timeIntervalSince(workingStart)))")
+                        .font(.system(size: 11))
+                        .foregroundColor(.statusWorking)
+                } else {
+                    Text(statusText)
+                        .font(.system(size: 11))
+                        .foregroundColor(session.status == .idle ? .statusIdle : .statusExited)
+                }
+                
+                Text("PID \(String(session.pid))")
+                    .font(.system(size: 11))
+                    .foregroundColor(.textSecondary.opacity(0.7))
                 
                 Spacer()
-                
-                // Status and time info
-                HStack(spacing: 12) {
-                    if session.status == .working, let workingStart = session.currentWorkingStartTimestamp {
-                        Text("\(statusText) • \(formatDuration(Date().timeIntervalSince(workingStart)))")
-                            .font(.system(size: 11))
-                            .foregroundColor(.statusWorking)
-                    } else {
-                        Text(statusText)
-                            .font(.system(size: 11))
-                            .foregroundColor(session.status == .idle ? .statusIdle : .statusExited)
-                    }
-                    
-                    Text("PID \(session.pid)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.textSecondary.opacity(0.7))
-                }
                 
                 Button(action: {
                     sessionManager.toggleMute(sessionId: session.id)
@@ -647,7 +647,7 @@ struct SessionRow: View {
                 .help(session.muted ? "Unmute notifications" : "Mute notifications")
             }
             
-            // Second row: Full message
+            // Third row: Full message
             Text(session.message)
                 .font(.system(size: 12))
                 .foregroundColor(.textPrimary.opacity(0.9))
