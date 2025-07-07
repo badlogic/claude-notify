@@ -5,3 +5,4 @@
     - Special commands to open/close control window via socket?
     - snap-happy to take screenshots? better way to test UI?
 - [ ] Need to add an icon which we can use for system notifications (if available on the platform)
+- [ ] Implement a way to focus the concrete window Claude Code is running in when clicking on a notification or on a session row in the control window
